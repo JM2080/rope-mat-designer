@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Free rope mat designer: rectangular woven mats with a labeled peg jig, over/under threading guide, rope estimate and true-size SVG/PDF exports.">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+<title>Rope Mat Designer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workbench — controls rail | jig board (hero) | threading guide; stacks on narrow screens */
+:root{
+  --bg:#eaeef0; --panel:#f8fafa; --ink:#1b272c; --muted:#5a6a70; --line:#cfd8db;
+  --accent:#1e5a86; --accent-soft:#d7e5ef; --over:#1f5fbf; --under:#c0392b; --warn:#8a5a00; --warn-bg:#f8edd6;
+  --f-display:"Zilla Slab", Rockwell, "Roboto Slab", Georgia, serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11171a; --panel:#182125; --ink:#e1e8ea; --muted:#94a4aa; --line:#2b373c;
+  --accent:#86b8de; --accent-soft:#1f3242; --over:#7fb0ff; --under:#ff8a7a; --warn:#e5b85a; --warn-bg:#2e2617; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11171a; --panel:#182125; --ink:#e1e8ea; --muted:#94a4aa; --line:#2b373c;
+  --accent:#86b8de; --accent-soft:#1f3242; --over:#7fb0ff; --under:#ff8a7a; --warn:#e5b85a; --warn-bg:#2e2617; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1440px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin-bottom:16px}
+h1{font-family:var(--f-display);font-weight:700;font-size:30px;margin:0;letter-spacing:.2px;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:70ch}
+.grid{display:grid;grid-template-columns:290px minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:1180px){.grid{grid-template-columns:280px minmax(0,1fr)}.guide{grid-column:1 / -1}}
+@media (max-width:780px){.grid{grid-template-columns:minmax(0,1fr)}.board{order:-1}}
+[hidden]{display:none!important}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.panel h2{font-family:var(--f-display);font-weight:500;font-size:18px;margin:0 0 10px}
+.sec{display:grid;gap:10px;padding-block:12px;border-top:1px solid var(--line)}
+.sec:first-of-type{border-top:0;padding-top:0}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:grid;gap:4px;min-width:0}
+.field label{font-size:12.5px;color:var(--muted)}
+input[type=number],select{width:100%;font:inherit;font-family:var(--f-mono);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.stepper{display:grid;grid-template-columns:32px 1fr 32px;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.stepper button{border:0;background:var(--bg);color:var(--ink);font-size:16px;cursor:pointer}
+.stepper button:hover{background:var(--accent-soft)}
+.stepper input{border:0;border-radius:0;text-align:center;-moz-appearance:textfield}
+.stepper input::-webkit-inner-spin-button{-webkit-appearance:none}
+.check{display:flex;align-items:center;gap:8px;font-size:13px}
+.check input{accent-color:var(--accent)}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12.5px;padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+.swatches{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+input[type=color]{-webkit-appearance:none;appearance:none;width:28px;height:28px;border:0;border-radius:50%;padding:4px;cursor:pointer;background:conic-gradient(#ff3b30,#ff9500,#ffd60a,#34c759,#00c7be,#007aff,#af52de,#ff2d55,#ff3b30)}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:2px solid var(--panel);border-radius:50%}
+input[type=color]::-moz-color-swatch{border:2px solid var(--panel);border-radius:50%}
+input[type=color]:hover{filter:saturate(1.2) brightness(1.05)}
+button:focus-visible,input:focus-visible,select:focus-visible,.step:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.board{padding:0;overflow:hidden}
+.stats{display:flex;flex-wrap:wrap;gap:4px 18px;padding:10px 14px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.stats b{font-weight:500;color:var(--ink)} .stats span{color:var(--muted)}
+.canvas-box{position:relative;background:var(--bg)}
+canvas{display:block;width:100%;height:auto}
+.msg{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center}
+.msg div{max-width:46ch;background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:14px 16px;font-weight:500}
+.lay{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.btn{font:inherit;font-weight:500;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.fit{margin:0 14px 12px;padding:8px 10px;border-radius:6px;font-size:13px}
+.fit.ok{background:var(--accent-soft);color:var(--ink)} .fit.bad{background:var(--warn-bg);color:var(--warn)}
+.ropecalc{margin:0 14px 12px;padding:12px;border:1px solid var(--line);border-radius:8px;display:grid;gap:10px}
+.rc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.rc-total{font-size:18px;font-weight:500;color:var(--accent)}
+.rc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.rc-grid{grid-template-columns:1fr 1fr}}
+.rc-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.rc-table td{padding:3px 0;border-top:1px solid var(--line)}
+.rc-table td:last-child{text-align:right}
+.rc-table tr.sum td{font-weight:600;color:var(--ink)}
+.ropecalc .hint{margin:0}
+.passkey{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;font-family:var(--f-mono)}
+.passkey span{display:flex;align-items:center;gap:6px}
+.passkey i{width:22px;height:10px;border-radius:5px;display:inline-block;border:1px solid var(--line)}
+.badge{font-size:11.5px;font-weight:600;color:var(--accent);display:flex;gap:8px;flex-wrap:wrap}
+.badge span{background:var(--accent-soft);border-radius:999px;padding:1px 8px}
+.exports{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--line);align-items:center}
+.exports .exp-row{flex-basis:100%;display:flex}
+.exports .note{color:var(--muted);font-size:12.5px;flex-basis:100%}
+.guide .startrow{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-bottom:10px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.legend span{white-space:nowrap}.legend span:last-child{white-space:normal}.legend i{font-style:normal;font-family:var(--f-mono);font-weight:500}
+.o{color:var(--over)} .u{color:var(--under)}
+.steps{list-style:none;margin:0;padding:0;max-height:900px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.step{display:block;padding:10px 12px 12px;border-top:1px solid var(--line);cursor:pointer}
+.step .sh{font-weight:600;font-size:14.5px;margin-bottom:6px}
+.step .none{margin:0;color:var(--muted);font-size:12.5px}
+table.out{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--panel)}
+table.out th{background:#3a3a3a;color:#fff;font-weight:600;padding:5px 6px;border:1px solid #3a3a3a;text-align:center}
+table.out td{padding:5px 6px;border:1px solid var(--line);text-align:center}
+table.out tbody tr:nth-child(even) td{background:var(--bg)}
+table.out td.o,table.out td.u{font-weight:700;letter-spacing:.02em}
+table.out td.o{color:var(--over)} table.out td.u{color:var(--under)}
+table.out .sr{color:var(--muted)}
+.step .badge{margin-top:8px}
+.step:first-child{border-top:0}
+.step:hover{background:var(--accent-soft)}
+.step.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.step .n{color:var(--muted);font-family:var(--f-mono);font-size:12px}
+.step .pg{font-family:var(--f-mono);font-weight:500}
+.step .seq{font-family:var(--f-mono);font-size:12.5px;letter-spacing:.06em;overflow-wrap:anywhere}
+.nx{color:var(--muted)}
+.xs{display:flex;flex-wrap:wrap;gap:4px 6px;letter-spacing:0}
+.x{white-space:nowrap;font-size:12px}
+.x b{font-weight:600}
+.x.nx{font-size:14px;line-height:1}
+.step .seq .cnt{display:block;font-size:11px;color:var(--muted);letter-spacing:0;margin-top:2px}
+.step .seq em{font-style:normal;color:var(--muted);letter-spacing:0}
+.hint{color:var(--muted);font-size:12.5px;margin:8px 0 0}
+summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:500}
+details[open] summary{margin-bottom:6px}
+.names{display:grid;gap:10px;margin:8px 0 10px}
+.names .grp{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px}
+.names .grp b{grid-column:1/-1;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.names label{display:grid;gap:2px;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.names input{width:100%;font:inherit;font-family:var(--f-mono);font-size:13px;color:var(--ink);padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg)}
+.names input.flash{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+
+.foot{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-top:22px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+.foot p{margin:0;max-width:70ch}
+.tip{display:inline-flex;align-items:center;gap:8px;background:#ffd23f;color:#1b1b1b;font-weight:600;font-size:14px;padding:9px 16px;border-radius:999px;text-decoration:none;border:1px solid rgba(0,0,0,.15)}
+.tip:hover{filter:brightness(.96)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Rope Mat Designer</h1>
+  <p>Rectangular mat template: the rope runs a Lissajous path, x = cos(side·t), y = sin(top·t), bouncing between pegs on a jig. Set the bights and size, then follow the peg-to-peg threading guide.</p>
+</header>
+<div class="grid">
+  <aside class="panel" aria-label="Mat settings">
+    <div class="sec">
+      <div class="lbl">Presets</div>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="sec">
+      <div class="lbl">Bights</div>
+      <div class="row">
+        <div class="field"><label for="top">Top &amp; bottom</label>
+          <div class="stepper"><button type="button" data-step="top" data-d="-1" aria-label="Fewer top bights">−</button><input id="top" type="number" min="1" max="30" value="9"><button type="button" data-step="top" data-d="1" aria-label="More top bights">+</button></div></div>
+        <div class="field"><label for="side">Each end</label>
+          <div class="stepper"><button type="button" data-step="side" data-d="-1" aria-label="Fewer end bights">−</button><input id="side" type="number" min="1" max="30" value="5"><button type="button" data-step="side" data-d="1" aria-label="More end bights">+</button></div></div>
+      </div>
+      <div class="field"><label for="k">Bight shape <span class="mono" id="kval"></span></label>
+        <input id="k" type="range" min="0" max="0.995" step="0.005" value="0.96"></div>
+    </div>
+    <div class="sec">
+      <div class="lbl">Size &amp; rope</div>
+      <div class="row">
+        <div class="field"><label for="W">Width</label><input id="W" type="number" step="0.5" min="2" value="36"></div>
+        <div class="field"><label for="H">Height</label><input id="H" type="number" step="0.5" min="2" value="24"></div>
+        <div class="field"><label for="d">Rope dia.</label><input id="d" type="number" step="0.0625" min="0.05" value="0.5"></div>
+        <div class="field"><label for="passes">Passes</label><div class="stepper"><button type="button" data-step="passes" data-d="-1" aria-label="Fewer passes">−</button><input id="passes" type="number" min="1" max="12" value="3"><button type="button" data-step="passes" data-d="1" aria-label="More passes">+</button></div></div>
+        <div class="field"><label for="peg">Peg dia.</label><input id="peg" type="number" step="0.125" min="0.1" value="1"></div>
+        <div class="field"><label for="units">Units</label><select id="units"><option value="in">inches</option><option value="cm">cm</option></select></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="lbl">Display</div>
+      <div class="field"><label>Rope color (swatch or pick your own)</label></div>
+      <div class="swatches" id="swatches" role="group" aria-label="Rope color"></div>
+      <div class="field"><label>Background</label></div>
+      <div class="swatches" id="bgSwatches" role="group" aria-label="Background color"></div>
+      <div class="field"><label>Peg color</label></div>
+      <div class="swatches" id="pegSwatches" role="group" aria-label="Peg color"></div>
+      <div class="field"><label for="pegView">Peg size on screen <span class="mono" id="pegViewVal"></span></label>
+        <input id="pegView" type="range" min="0.5" max="1.6" step="0.05" value="1"></div>
+      <label class="check"><input type="checkbox" id="jig" checked> Jig board &amp; pegs</label>
+      <label class="check"><input type="checkbox" id="labels" checked> Peg labels</label>
+      <label class="check"><input type="checkbox" id="texture" checked> Rope lay texture</label>
+      <label class="check"><input type="checkbox" id="invert"> Flip over/under</label>
+      <label class="check"><input type="checkbox" id="showHole" checked> Measured hole on the board</label>
+      <label class="check"><input type="checkbox" id="half" checked> Halfway marks</label>
+      <label class="check"><input type="checkbox" id="passLayer"> Color each pass (first → last shade)</label>
+      <div id="passOpts" hidden>
+        <div class="swatches" style="margin-bottom:8px"><label class="check">First pass <input type="color" id="passA" value="#a9d8f7"></label><label class="check">Last pass <input type="color" id="passB" value="#0e2c63"></label><button class="chip" type="button" id="passReset">Blues</button></div>
+        <div class="passkey" id="passKey"></div>
+        <label class="check"><input type="checkbox" id="passSwap"> Pass 1 on the other side of the lead</label>
+      </div>
+      <div><button class="btn" type="button" id="resetColors">Reset colors</button></div>
+    </div>
+  </aside>
+
+  <main class="panel board" aria-label="Mat preview">
+    <div class="stats" id="stats"></div>
+    <div class="canvas-box"><canvas id="cv" aria-label="Woven mat preview on jig"></canvas><div class="msg" id="msg" hidden><div id="msgText"></div></div></div>
+    <div class="lay">
+      <button class="btn primary" id="play" type="button">Lay rope</button>
+      <button class="btn" id="full" type="button">Show all</button>
+      <input id="prog" type="range" min="0" max="1000" value="1000" aria-label="Laying progress">
+      <span class="mono" id="progval">100%</span>
+    </div>
+    <div class="fit" id="fit"></div>
+    <div class="ropecalc" id="holes">
+      <div class="rc-head"><span class="lbl">Open holes (interior)</span><span class="rc-total mono" id="hlTotal"></span></div>
+      <table class="rc-table mono" id="hlTable"></table>
+      <p class="hint" id="hlNote"></p>
+    </div>
+    <div class="ropecalc">
+      <div class="rc-head"><span class="lbl">Rope needed</span><span class="rc-total mono" id="rcTotal"></span></div>
+      <div class="rc-grid">
+        <div class="field"><label for="takeup">Over-under take-up (%)</label><input id="takeup" type="number" min="0" max="40" step="1" value="8"></div>
+        <div class="field"><label for="tail" id="tailLbl">Tail at each end</label><input id="tail" type="number" min="0" step="1" value="24"></div>
+        <div class="field"><label for="spare">Spare to buy (%)</label><input id="spare" type="number" min="0" max="50" step="1" value="10"></div>
+      </div>
+      <table class="rc-table mono" id="rcTable"></table>
+      <p class="hint" id="rcNote"></p>
+    </div>
+    <div class="exports">
+      <button class="btn" type="button" data-exp="png">Woven PNG</button>
+      <button class="btn" type="button" data-exp="svg">Woven SVG (1:1)</button>
+      <button class="btn" type="button" data-exp="jig">Jig template SVG</button>
+      <button class="btn" type="button" data-exp="csv">Guide and pegs CSV</button>
+      <div class="exp-row"><button class="btn primary" type="button" data-exp="pdf">Weave Instructions PDF</button></div>
+      <span class="note" id="expnote">SVGs are drawn at true size in your chosen units, ready to print or tile for drilling the jig.</span>
+    </div>
+  </main>
+
+  <section class="panel guide" aria-label="Threading guide">
+    <h2>Threading guide</h2>
+    <div class="startrow">
+      <div class="field"><label for="start">Start peg</label><select id="start"></select></div>
+      <div class="field"><label for="dir">First leg</label><select id="dir"></select></div>
+    </div>
+    <div class="field" style="margin-bottom:10px"><label for="guideMode">Show crossings for</label><select id="guideMode">
+      <option value="lead">Pass 1, the lead (only strands already laid)</option><option value="follow">Passes 2 and up (every crossing)</option></select></div>
+    <p class="hint" style="margin:0 0 10px">Work through the steps in order. Each step lists only the crossings with rope that is <b>already down</b> when you get there; the rest show up later, under the step that lays that rope.</p><span id="lgDot" hidden></span>
+    <ol class="steps" id="steps"></ol>
+    <p class="hint" id="guideHint"></p>
+  </section>
+</div>
+<footer class="foot">
+  <p>The mat path uses the Lissajous approach described by Nils Kristian Rossing in <i>How to Make Rope Mats and Rosettes</i>. Free to use for your own mats.</p>
+  <a class="tip" id="tip" href="#" target="_blank" rel="noopener" hidden>Like this tool? Buy me a round (or 2)</a>
+</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+/* ---- Mat geometry core: Lissajous / billiard path in a rectangle ---- */
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){const t=a%b;a=b;b=t}return a}
+function wave(th,k){ if(k<0.002) return Math.sin(th); return Math.asin(k*Math.sin(th))/Math.asin(k); }
+
+function buildMat(o){
+  // o: {top, side, W, H, d, passes, k, peg, invert}
+  const q=o.top, p=o.side, TAU=Math.PI*2;
+  const g=gcd(p,q);
+  if(g!==1) return {error:'gcd', g};
+  const bw=o.d*o.passes;
+  const ax=(o.W-bw)/2, ay=(o.H-bw)/2;
+  if(ax<=bw*0.5||ay<=bw*0.5) return {error:'small'};
+  const swap = (p%2===0); // p even -> x sin-like, y cos-like (avoids corner hits)
+  const fx = swap ? (t=>wave(p*t,o.k)) : (t=>wave(p*t+Math.PI/2,o.k));
+  const fy = swap ? (t=>wave(q*t+Math.PI/2,o.k)) : (t=>wave(q*t,o.k));
+  const N=Math.max(3000, Math.min(36000, 380*(p+q)));
+  const X=new Float64Array(N), Y=new Float64Array(N);
+  for(let i=0;i<N;i++){const t=TAU*i/N; X[i]=ax*fx(t); Y[i]=ay*fy(t);}
+  const cum=new Float64Array(N+1);
+  for(let i=0;i<N;i++){const j=(i+1)%N; cum[i+1]=cum[i]+Math.hypot(X[j]-X[i],Y[j]-Y[i]);}
+  const total=cum[N], avg=total/N;
+  // normals + offset strands
+  const NX=new Float64Array(N), NY=new Float64Array(N);
+  for(let i=0;i<N;i++){const a=(i-1+N)%N,b=(i+1)%N;let tx=X[b]-X[a],ty=Y[b]-Y[a];const l=Math.hypot(tx,ty)||1;NX[i]=-ty/l;NY[i]=tx/l;}
+  const strands=[];
+  for(let s=0;s<o.passes;s++){const off=(s-(o.passes-1)/2)*o.d;const sx=new Float64Array(N),sy=new Float64Array(N);
+    for(let i=0;i<N;i++){sx[i]=X[i]+NX[i]*off;sy[i]=Y[i]+NY[i]*off;} strands.push({x:sx,y:sy});}
+  // crossings via spatial grid
+  const cell=avg*3, grid=new Map();
+  for(let i=0;i<N;i++){const j=(i+1)%N;
+    const x0=Math.floor(Math.min(X[i],X[j])/cell),x1=Math.floor(Math.max(X[i],X[j])/cell);
+    const y0=Math.floor(Math.min(Y[i],Y[j])/cell),y1=Math.floor(Math.max(Y[i],Y[j])/cell);
+    for(let gx=x0;gx<=x1;gx++)for(let gy=y0;gy<=y1;gy++){const key=gx*131071+gy;let a=grid.get(key);if(!a){a=[];grid.set(key,a)}a.push(i);}
+  }
+  const seen=new Set(), raw=[];
+  for(const list of grid.values()){
+    for(let m=0;m<list.length;m++)for(let n=m+1;n<list.length;n++){
+      let i=list[m],j=list[n]; if(i>j){const t=i;i=j;j=t}
+      if(j-i<=2||(i<=1&&j>=N-2)) continue;
+      const key=i*N+j; if(seen.has(key)) continue; seen.add(key);
+      const i2=(i+1)%N,j2=(j+1)%N;
+      const rx=X[i2]-X[i],ry=Y[i2]-Y[i],sx=X[j2]-X[j],sy=Y[j2]-Y[j];
+      const den=rx*sy-ry*sx; if(Math.abs(den)<1e-14) continue;
+      const cx=X[j]-X[i],cy=Y[j]-Y[i];
+      const u=(cx*sy-cy*sx)/den, v=(cx*ry-cy*rx)/den;
+      if(u>=0&&u<1&&v>=0&&v<1) raw.push({sa:i+u,sb:j+v,x:X[i]+rx*u,y:Y[i]+ry*u,alpha:Math.atan2(Math.abs(ry),Math.abs(rx)),ang:Math.abs(Math.atan2(rx*sy-ry*sx,rx*sx+ry*sy))});
+    }
+  }
+  // merge near-duplicates
+  raw.sort((a,b)=>a.sa-b.sa);
+  const cross=[];
+  for(const c of raw){ if(cross.some(e=>Math.abs(e.sa-c.sa)<1.5&&Math.abs(e.sb-c.sb)<1.5)) continue; cross.push(c); }
+  // visits, alternating over/under along the path
+  const visits=[];
+  cross.forEach((c,ci)=>{visits.push({s:c.sa,c:ci});visits.push({s:c.sb,c:ci});});
+  visits.sort((a,b)=>a.s-b.s);
+  visits.forEach((v,i)=>{v.over=((i%2===0)!==!!o.invert);});
+  for(let i=0;i<visits.length;i++){const v=visits[i],nv=visits.length;
+    const pv=visits[(i-1+nv)%nv], nx=visits[(i+1)%nv];
+    const dp=arcBetween(cum,N,i>0?pv.s:pv.s-N,v.s), dn=arcBetween(cum,N,v.s,i<nv-1?nx.s:nx.s+N);
+    const sn=Math.max(0.25,Math.abs(Math.sin(cross[v.c].ang)));
+    let L=bw/(2*sn)+0.3*o.d; L=Math.min(L,0.5*Math.min(dp,dn)-0.02*o.d); L=Math.max(L,o.d*0.5);
+    const j=Math.floor(v.s)%N, ls=(cum[j+1]-cum[j])||avg; v.del=L/ls; }
+  const strandLens=strands.map(st=>{let L=0;for(let i=0;i<N;i++){const j=(i+1)%N;L+=Math.hypot(st.x[j]-st.x[i],st.y[j]-st.y[i]);}return L;});
+  let conflicts=0; const byC=cross.map(()=>[]);
+  visits.forEach(v=>byC[v.c].push(v)); byC.forEach(a=>{if(a.length!==2||a[0].over===a[1].over)conflicts++;});
+  // pegs at bight apexes
+  const pegs=[]; const inset=bw/2+o.peg/2;
+  const apex=(freq,cosLike)=>{const r=[];for(let k=0;k<2*freq;k++){const t=cosLike?k*Math.PI/freq:(Math.PI/2+k*Math.PI)/freq;r.push({t,sign:(k%2===0)?1:-1});}return r;};
+  const xCos=!swap, yCos=swap;
+  apex(p,xCos).forEach(a=>{const s=a.t/TAU*N;const y=ay*fy(a.t);pegs.push({side:a.sign>0?'R':'L',s,ax:a.sign*ax,ay:y,x:a.sign*(ax-inset),y});});
+  apex(q,yCos).forEach(a=>{const s=a.t/TAU*N;const x=ax*fx(a.t);pegs.push({side:a.sign>0?'T':'B',s,ax:x,ay:a.sign*ay,x,y:a.sign*(ay-inset)});});
+  for(const side of ['T','B','L','R']){
+    const g2=pegs.filter(e=>e.side===side);
+    if(side==='T'||side==='B') g2.sort((a,b)=>a.x-b.x); else g2.sort((a,b)=>b.y-a.y);
+    g2.forEach((e,i)=>e.name=side+(i+1));
+  }
+  pegs.sort((a,b)=>a.s-b.s);
+  // density / clearance
+  const gaps=[]; for(let i=0;i<visits.length;i++){const a=visits[i],b=visits[(i+1)%visits.length];
+    const sa=a.s, sb=(i+1<visits.length)?b.s:b.s+N; gaps.push(arcBetween(cum,N,sa,sb));}
+  gaps.sort((a,b)=>a-b); const angs=cross.map(c=>Math.min(c.ang,Math.PI-c.ang)).sort((a,b)=>a-b);
+  const medGap=gaps.length?gaps[Math.floor(gaps.length/2)]:total;
+  const medAng=angs.length?angs[Math.floor(angs.length/2)]:Math.PI/2;
+  const clearance=medGap*Math.sin(medAng)-bw;
+  const als=cross.map(c=>c.alpha).sort((a,b)=>a-b); const medAlpha=als.length?als[Math.floor(als.length/2)]:Math.PI/4;
+  // interior gap spread (middle 80%) for a size range
+  const gLo=gaps.length?gaps[Math.floor(gaps.length*0.2)]:medGap, gHi=gaps.length?gaps[Math.floor(gaps.length*0.8)]:medGap;
+  let cc=null,cd=Infinity; for(const c of cross){const dd=Math.hypot(c.x,c.y);if(dd<cd){cd=dd;cc=c;}}
+  return {medGap,medAlpha,gLo,gHi,centerCross:cc,p,q,N,X,Y,cum,total,strands,strandLens,cross,visits,pegs,conflicts,bw,ax,ay,clearance,expected:Math.max(0,2*p*q-p-q),o};
+}
+function arcBetween(cum,N,sa,sb){ // sa<=sb, may exceed N
+  const at=s=>{const k=Math.floor(s/N);let r=s-k*N;const i=Math.floor(r),f=r-i;return k*cum[N]+cum[i]+(cum[Math.min(i+1,N)]-cum[i])*f;};
+  return at(sb)-at(sa);
+}
+// Ordered legs from a start peg in a direction
+function buildLegs(M,startName,dir){
+  const P=M.pegs, N=M.N; const si=Math.max(0,P.findIndex(e=>e.name===startName));
+  const s0=P[si].s, pos=v=>{let d=dir>0?v.s-s0:s0-v.s; return ((d%N)+N)%N;};
+  const byC={}; M.visits.forEach(v=>(byC[v.c]=byC[v.c]||[]).push(v));
+  const legs=[]; const n=P.length;
+  for(let k=0;k<n;k++){
+    const A=P[(si+dir*k+n*4)%n], B=P[(si+dir*(k+1)+n*4)%n];
+    let a=A.s,b=B.s;
+    let list;
+    if(dir>0){ if(b<=a) b+=N; list=M.visits.map(v=>[v.s<a?v.s+N:v.s,v]).filter(e=>e[0]>a&&e[0]<b).sort((x,y)=>x[0]-y[0]);}
+    else { if(b>=a) b-=N; list=M.visits.map(v=>[v.s>a?v.s-N:v.s,v]).filter(e=>e[0]<a&&e[0]>b).sort((x,y)=>y[0]-x[0]);}
+    const items=list.map(e=>{const v=e[1];const o=byC[v.c].find(w=>w!==v);const laid=!!o&&pos(o)<pos(v);return {full:v.over?'O':'U',lead:laid?(v.over?'O':'U'):'·',c:v.c,v,o};});
+    legs.push({from:A.name,to:B.name,sFrom:a,sTo:b,ou:items.map(i=>i.full),lead:items.map(i=>i.lead),items});
+  }
+  const vl=new Map(); legs.forEach((l,k)=>l.items.forEach(it=>vl.set(it.v,k)));
+  legs.forEach(l=>l.items.forEach(it=>{it.other=vl.has(it.o)?vl.get(it.o):-1;}));
+  return legs;
+}
+
+
+/* ---- UI ---- */
+const $=id=>document.getElementById(id);
+const cv=$('cv');
+const ROPES={manila:['#dbb46b','#6e4b1d'],jute:['#b88a4d','#553915'],cotton:['#f0ebdf','#8a8475'],navy:['#33507a','#111c2b'],red:['#b4442f','#4c1911'],sage:['#8ea889','#3a4b37']};
+const BOARDS={pine:'#d6bc8f',birch:'#ecdcc0',ply:'#c9a77a',walnut:'#6b4a32',white:'#f6f5f1',grey:'#9aa3a7',slate:'#3b4449',black:'#1d2124'};
+function bgColor(){return S.bg==='custom'?S.bgCustom:(BOARDS[S.bg]||BOARDS.pine);}
+function pegShowDia(){ // screen-only: small pegs drawn a bit bigger, large pegs a bit smaller; exports use the true size
+  const ref=S.units==='in'?0.5:1.27; return Math.pow(S.peg,0.6)*Math.pow(ref,0.4)*(+S.pegView||1); }
+function pegViewLabel(){ $('pegViewVal').textContent='· drawn at '+fmtLen(pegShowDia())+' (true '+fmtLen(S.peg)+')'; }
+const PEGC={wood:'#5a3b1f',red:'#e8262b',orange:'#ff8a00',yellow:'#ffd60a',lime:'#39d353',cyan:'#00c8ff',magenta:'#ff2fb0',white:'#ffffff'};
+function pegHex(){return S.pegColor==='custom'?S.pegCustom:(PEGC[S.pegColor]||PEGC.wood);}
+function isDark(hex){const n=parseInt(hex.slice(1),16);const r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)<120;}
+function boardInk(){const dk=isDark(bgColor());return dk?{grid:'255,255,255',label:'#f1ece2',line:'rgba(255,255,255,.45)'}:{grid:'90,60,20',label:'#3d2810',line:'rgba(70,45,15,.45)'};}
+const PRESETS=[
+  {name:'Rug 36×24 · 9×5',top:9,side:5,W:36,H:24,d:0.5,passes:3,units:'in'},
+  {name:'Runner 41×15 · 6×1',top:6,side:1,W:41,H:15,d:0.5,passes:5,units:'in'},
+  {name:'Doormat 30×20 · 7×4',top:7,side:4,W:30,H:20,d:0.5,passes:3,units:'in'},
+  {name:'Square 20×20 · 5×4',top:5,side:4,W:20,H:20,d:0.375,passes:3,units:'in'},
+  {name:'Coaster 4×4 · 3×2',top:3,side:2,W:4,H:4,d:0.125,passes:2,units:'in'},
+  {name:'Big rug 60×36 · 13×8',top:13,side:8,W:60,H:36,d:0.5,passes:3,units:'in'},
+];
+const DEF={top:9,side:5,W:36,H:24,d:0.5,passes:3,peg:1,units:'in',k:0.96,rope:'manila',custom:'#c9a46a',bg:'pine',bgCustom:'#cfd6d9',guideMode:'lead',pegColor:'wood',pegCustom:'#ff5a1f',pegView:1,passA:'#a9d8f7',passB:'#0e2c63',jig:true,labels:true,texture:true,invert:false,half:true,passLayer:false,passSwap:false,showHole:true,takeup:8,tail:24,spare:10,start:'R1',dir:1,scheme:'sides',pegNames:{}};
+let S=Object.assign({},DEF);
+try{const s=JSON.parse(localStorage.getItem('ropeMatDesigner')||'null'); if(s) S=Object.assign(S,s);}catch(e){}
+function save(){try{localStorage.setItem('ropeMatDesigner',JSON.stringify(S))}catch(e){}}
+const SIZES={in:[[24,18],[30,20],[36,24],[48,30],[60,36],[72,48],[20,20],[36,36]],cm:[[60,40],[80,50],[90,60],[120,80],[150,90],[180,120],[50,50],[90,90]]};
+function sizeLabel(w,h){ if(S.units==='in'){const ft=v=>v%12===0?(v/12)+"'":v+'"';return ft(w)+' × '+ft(h);} return w+' × '+h+' cm'; }
+function buildSizes(){ const box=$('sizes'); box.innerHTML=''; SIZES[S.units].forEach(([w,h])=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=sizeLabel(w,h);
+  b.onclick=()=>{S.W=w;S.H=h;rebuild();};box.appendChild(b);});
+  const r=document.createElement('button');r.type='button';r.className='chip';r.textContent='⇄ Rotate';r.title='Swap width and height';r.onclick=()=>{[S.W,S.H]=[S.H,S.W];[S.top,S.side]=[S.side,S.top];rebuild();};box.appendChild(r);}
+/* peg naming */
+function letters(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+function clockIndex(name){ if(!M||M.error) return 0; const t=M.q,p=M.p,side=name[0],k=parseInt(name.slice(1));
+  if(side==='T')return k-1; if(side==='R')return t+k-1; if(side==='B')return t+p+(t-k); return 2*t+p+(p-k); }
+function schemeName(name){ if(S.scheme==='clock') return String(clockIndex(name)+1); if(S.scheme==='letters') return letters(clockIndex(name)); return name; }
+function lab(name){ return name; }
+function buildNames(){ return; if(!M||M.error){return;}
+  const sides=[['T','Top'],['R','Right end'],['B','Bottom'],['L','Left end']];
+  $('names').innerHTML=sides.map(([s,t])=>{const ps=M.pegs.filter(e=>e.side===s).sort((a,b)=>parseInt(a.name.slice(1))-parseInt(b.name.slice(1)));
+    return `<div class="grp"><b>${t}</b>`+ps.map(e=>`<label>${schemeName(e.name)}<input id="pn-${e.name}" data-peg="${e.name}" maxlength="12" value="${(S.pegNames[e.name]||'').replace(/"/g,'&quot;')}" placeholder="${schemeName(e.name)}"></label>`).join('')+'</div>';}).join('');
+  $('names').querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{const v=inp.value.trim(); if(v)S.pegNames[inp.dataset.peg]=v; else delete S.pegNames[inp.dataset.peg]; save(); relabel();}));
+}
+function relabel(){ legsUpdate(true); fillStart(); }
+function fillStart(){ if(!M||M.error) return; const order=s=>'TRBL'.indexOf(s[0])*100+parseInt(s.slice(1));
+  $('start').innerHTML=M.pegs.map(e=>e.name).sort((a,b)=>order(a)-order(b)).map(n=>`<option value="${n}"${n===S.start?' selected':''}>${esc(lab(n))}</option>`).join(''); }
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+let M=null, LEGS=[], prog=1, selLeg=-1, playing=false, dl=null;
+
+function fmtLen(v){ return S.units==='in' ? (+v.toFixed(2))+' in' : (+v.toFixed(1))+' cm'; }
+function fmtRope(v){ if(S.units==='in'){const ft=v/12; return ft<3? (v.toFixed(0)+' in') : (ft.toFixed(ft<20?1:0)+' ft');} const m=v/100; return m<1?(v.toFixed(0)+' cm'):(m.toFixed(1)+' m'); }
+function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>e.hidden=true,2600);}
+
+/* controls */
+function syncInputs(){
+  for(const k of ['top','side','W','H','d','passes','peg','takeup','tail','spare']) $(k).value=S[k];
+  $('pegView').value=S.pegView; pegViewLabel();
+  $('units').value=S.units; $('k').value=S.k; $('kval').textContent=S.k<0.3?'· curved':S.k>0.985?'· sharp':'· rounded';
+  for(const k of ['jig','labels','texture','invert','showHole','half','passLayer','passSwap']) $(k).checked=S[k];
+  $('passOpts').hidden=!S.passLayer;
+  document.querySelectorAll('.sw:not(.bgsw):not(.pegsw)').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rope===S.rope));document.querySelectorAll('.pegsw').forEach(b=>b.setAttribute('aria-pressed',b.dataset.peg===S.pegColor));document.querySelectorAll('.bgsw').forEach(b=>b.setAttribute('aria-pressed',b.dataset.bg===S.bg));
+  const u=S.units==='in'?'in':'cm';
+  $('W').previousElementSibling.textContent='Width ('+u+')'; $('H').previousElementSibling.textContent='Height ('+u+')';
+  $('d').previousElementSibling.textContent='Rope dia. ('+u+')'; $('peg').previousElementSibling.textContent='Peg dia. ('+u+')';
+  $('d').step=S.units==='in'?0.0625:0.1; $('peg').step=S.units==='in'?0.125:0.25; $('W').step=$('H').step=S.units==='in'?0.5:1;
+}
+PRESETS.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p.name;
+  b.onclick=()=>{Object.assign(S,p);S.peg=p.units==='in'?(p.d<=0.2?0.25:1):2.5;S.start='R1';S.dir=1;rebuild();};$('presets').appendChild(b);});
+Object.entries(ROPES).forEach(([k,c])=>{const b=document.createElement('button');b.type='button';b.className='sw';b.dataset.rope=k;b.style.background=c[0];b.title=k;b.setAttribute('aria-label',k+' rope');
+  b.onclick=()=>{S.rope=k;syncInputs();save();draw();};$('swatches').appendChild(b);});
+Object.entries(PEGC).forEach(([k,c])=>{const b=document.createElement('button');b.type='button';b.className='sw pegsw';b.dataset.peg=k;b.style.background=c;b.title=k;b.setAttribute('aria-label',k+' pegs');
+  b.onclick=()=>{S.pegColor=k;syncInputs();save();draw();};$('pegSwatches').appendChild(b);});
+{const c=document.createElement('input');c.type='color';c.id='pegCustom';c.value=S.pegCustom;c.title='Custom peg color';c.setAttribute('aria-label','Custom peg color');
+  c.oninput=()=>{S.pegCustom=c.value;S.pegColor='custom';syncInputs();save();draw();};$('pegSwatches').appendChild(c);}
+for(const k of ['passA','passB']){const c=$(k);c.value=S[k];c.oninput=()=>{S[k]=c.value;save();passKey();draw();};}
+$('guideMode').value=S.guideMode;
+$('guideMode').addEventListener('change',()=>{S.guideMode=$('guideMode').value;save();legsUpdate(true);});
+$('resetColors').onclick=()=>{for(const k of ['rope','custom','bg','bgCustom','pegColor','pegCustom','passA','passB'])S[k]=DEF[k];
+  for(const [id,k] of [['custom','custom'],['bgCustom','bgCustom'],['pegCustom','pegCustom'],['passA','passA'],['passB','passB']]){const e=$(id);if(e)e.value=S[k];}
+  syncInputs();save();passKey();draw();toast('Colors reset');};
+$('passReset').onclick=()=>{S.passA='#a9d8f7';S.passB='#0e2c63';$('passA').value=S.passA;$('passB').value=S.passB;save();passKey();draw();};
+Object.entries(BOARDS).forEach(([k,c])=>{const b=document.createElement('button');b.type='button';b.className='sw bgsw';b.dataset.bg=k;b.style.background=c;b.title=k;b.setAttribute('aria-label',k+' background');
+  b.onclick=()=>{S.bg=k;syncInputs();save();draw();};$('bgSwatches').appendChild(b);});
+{const c=document.createElement('input');c.type='color';c.id='bgCustom';c.value=S.bgCustom;c.title='Custom background';c.setAttribute('aria-label','Custom background color');
+  c.oninput=()=>{S.bgCustom=c.value;S.bg='custom';syncInputs();save();draw();};$('bgSwatches').appendChild(c);}
+{const c=document.createElement('input');c.type='color';c.id='custom';c.value=S.custom;c.title='Custom color';c.setAttribute('aria-label','Custom rope color');
+  c.oninput=()=>{S.custom=c.value;S.rope='custom';syncInputs();save();draw();};$('swatches').appendChild(c);}
+document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{const k=b.dataset.step;S[k]=Math.max(1,Math.min(k==='passes'?12:30,(+S[k])+(+b.dataset.d)));rebuild();});
+$('pegView').addEventListener('input',()=>{S.pegView=+$('pegView').value;pegViewLabel();save();draw();});
+for(const k of ['top','side','W','H','d','passes','peg']) $(k).addEventListener('change',()=>{const v=parseFloat($(k).value);if(isFinite(v)&&v>0){S[k]=(k==='top'||k==='side'||k==='passes')?Math.round(v):v;}rebuild();});
+$('k').addEventListener('input',()=>{S.k=+$('k').value;rebuild();});
+$('units').addEventListener('change',()=>{const nu=$('units').value;if(nu!==S.units){const f=nu==='cm'?2.54:1/2.54;for(const k of ['W','H','d','peg','tail'])S[k]=+(S[k]*f).toFixed(3);S.units=nu;}rebuild();});
+for(const k of ['jig','labels','texture','showHole','half','passLayer','passSwap']) $(k).addEventListener('change',()=>{S[k]=$(k).checked;save();if(k==='passLayer')$('passOpts').hidden=!S.passLayer;passKey();if(k==='half'||k==='passSwap')legsUpdate(true);else draw();});
+$('invert').addEventListener('change',()=>{S.invert=$('invert').checked;rebuild();});
+cv.addEventListener('click',ev=>{ return; const r=cv.getBoundingClientRect(); const {Wb,Hb}=boardDims();
+  const X=(ev.clientX-r.left)/r.width*Wb-Wb/2, Y=Hb/2-(ev.clientY-r.top)/r.height*Hb;
+  let best=null,bd=Infinity; for(const p of M.pegs){const dd=Math.hypot(p.x-X,p.y-Y); if(dd<bd){bd=dd;best=p;}}
+  if(!best||bd>Math.max(S.peg*1.5,Math.max(S.W,S.H)*0.04)) return;
+  $('namesBox').open=true; const inp=$('pn-'+best.name); if(inp){inp.scrollIntoView({block:'nearest',behavior:'smooth'});inp.focus();inp.select();inp.classList.add('flash');setTimeout(()=>inp.classList.remove('flash'),1200);} });
+$('start').addEventListener('change',()=>{S.start=$('start').value;selLeg=-1;legsUpdate();});
+$('dir').addEventListener('change',()=>{S.dir=+$('dir').value;selLeg=-1;legsUpdate();});
+$('prog').addEventListener('input',()=>{stop();prog=$('prog').value/1000;selLeg=-1;markSteps();draw();});
+$('full').onclick=()=>{stop();prog=1;selLeg=-1;markSteps();draw();};
+$('play').onclick=()=>{ if(playing){stop();return;} if(prog>=1)prog=0; playing=true;$('play').textContent='Pause';let last=performance.now();
+  const tick=now=>{ if(!playing)return; prog=Math.min(1,prog+(now-last)/16000);last=now; selLeg=-1; draw(); if(prog>=1){stop();return;} requestAnimationFrame(tick);}; requestAnimationFrame(tick);};
+function stop(){playing=false;$('play').textContent='Lay rope';}
+
+function rebuild(){
+  syncInputs(); passKey(); save();
+  M=buildMat({top:S.top,side:S.side,W:S.W,H:S.H,d:S.d,passes:S.passes,k:S.k,peg:S.peg,invert:S.invert});
+  const msg=$('msg');
+  if(M.error){
+    msg.hidden=false;
+    if(M.error==='gcd'){ const alt=[S.side-1,S.side+1].filter(v=>v>=1&&gcd(v,S.top)===1); const alt2=[S.top-1,S.top+1].filter(v=>v>=1&&gcd(v,S.side)===1);
+      $('msgText').textContent=`${S.top} × ${S.side} bights share a factor of ${M.g}, so the rope would close into ${M.g} separate loops instead of one mat. Try ${alt.map(v=>S.top+' × '+v).concat(alt2.map(v=>v+' × '+S.side)).join(' or ')}.`;}
+    else $('msgText').textContent='The rope bundle is too wide for this mat size. Use a bigger mat, thinner rope or fewer passes.';
+    $('stats').innerHTML='';$('fit').hidden=true;$('steps').innerHTML='';$('start').innerHTML='';$('dir').innerHTML='';LEGS=[];draw();return;
+  }
+  msg.hidden=true; $('fit').hidden=false;
+  const names=M.pegs.map(e=>e.name); if(!names.includes(S.start)) S.start=names.includes('R1')?'R1':names[0];
+  fillStart(); buildNames();
+  const rope=ropeCalc(); holesCalc();
+  $('stats').innerHTML=[['Mat',`${fmtLen(S.W)} × ${fmtLen(S.H)}`],['Bights',`${S.top} × ${S.side}`],['Pegs',M.pegs.length],['Crossings',M.cross.length],['Holes ≈',(()=>{const H=holeGeom();return H&&H.gap>0?`${fmtLen(H.w)} × ${fmtLen(H.h)}`:'closed';})()],['Rope used ≈',`${fmtRope(rope)}`]].map(([a,b])=>`<span>${a} <b>${b}</b></span>`).join('');
+  const c=M.clearance, fit=$('fit');
+  if(c<0){fit.className='fit bad';fit.textContent=`Tight: neighbouring lanes overlap by about ${fmtLen(-c)}. Use fewer passes, thinner rope, fewer bights or a larger mat.`;}
+  else{const more=Math.floor(c/S.d);fit.className='fit ok';fit.textContent=`About ${fmtLen(c)} of open space between lanes`+(more>=1?` — room for roughly ${more} more pass${more>1?'es':''}.`:', a snug fill.')+``;}
+  if(M.conflicts) {fit.className='fit bad';fit.textContent+=` (${M.conflicts} crossings could not alternate cleanly.)`;}
+  legsUpdate();
+}
+function holeGeom(){
+  if(!M||M.error) return null;
+  const s2=Math.max(0.2,Math.sin(2*M.medAlpha)), ca=Math.cos(M.medAlpha), sa=Math.sin(M.medAlpha);
+  const one=g=>{const gap=g*s2-M.bw; const a=gap/s2; return {gap,a,w:2*a*ca,h:2*a*sa,area:a*a*s2};};
+  return {...one(M.medGap),lo:one(M.gLo),hi:one(M.gHi),deg:2*M.medAlpha*180/Math.PI,ca,sa,s2};
+}
+function holesCalc(){
+  const H=holeGeom(); if(!H) return;
+  const L=fmtLen, u=S.units==='in'?'in²':'cm²';
+  if(H.gap<=0){ $('hlTotal').textContent='closed'; $('hlTable').innerHTML=`<tr><td>Ropes overlap by</td><td>${L(-H.gap)}</td></tr>`;
+    $('hlNote').textContent='There are no open holes at this setting; the lanes press into each other. Use fewer passes, thinner rope, fewer bights or a larger mat.'; return; }
+  $('hlTotal').textContent=`${L(H.w)} × ${L(H.h)}`;
+  const sq=Math.abs(H.deg-90)<6;
+  $('hlTable').innerHTML=`<tr><td>Across corners, wide × tall</td><td>${L(H.w)} × ${L(H.h)}</td></tr>`+
+   `<tr><td>Side length (rope edge to rope edge)</td><td>${L(H.a)}</td></tr>`+
+   `<tr><td>Clear gap between parallel ropes</td><td>${L(H.gap)}</td></tr>`+
+   `<tr><td>Open area per hole</td><td>${(+H.area.toFixed(S.units==='in'?2:1))} ${u}</td></tr>`+
+   `<tr><td>Corner angle (left/right corners)</td><td>${H.deg.toFixed(0)}°</td></tr>`+
+   (H.hi.a-H.lo.a>0.05*H.a?`<tr><td>Typical range of side length</td><td>${L(Math.max(0,H.lo.a))} – ${L(H.hi.a)}</td></tr>`:'');
+  $('hlNote').textContent=(sq?'The holes are close to square, set on point like diamonds. ':`The holes are diamonds, ${H.w>H.h?'wider than tall':'taller than wide'}; they turn square when the corner angle is near 90°. `)+
+   'Sizes are for the open interior holes, measured between rope surfaces as laid on the jig. Holes along the edges and inside the bights are smaller and irregular, and the mat will close up slightly once it is tightened off the jig.';
+}
+function hexRGB(h){const n=parseInt(h.slice(1),16);return [n>>16,(n>>8)&255,n&255];}
+function passColor(i,n){const A=hexRGB(S.passA||'#a9d8f7'),B=hexRGB(S.passB||'#0e2c63');const t=n>1?i/(n-1):0;return '#'+A.map((a,j)=>Math.round(a+(B[j]-a)*t).toString(16).padStart(2,'0')).join('');}
+function strandPass(i){return S.passSwap?S.passes-1-i:i;} // strand index -> pass index (0-based)
+function strandColors(i){ if(!S.passLayer){return ropeColors();} const c=passColor(strandPass(i),S.passes); return [c,shade(c,-0.6)]; }
+function passKey(){ $('passKey').innerHTML=Array.from({length:S.passes},(_,i)=>`<span><i style="background:${passColor(i,S.passes)}"></i>Pass ${i+1}</span>`).join(''); }
+function sAtArc(target){ // centerline position at arc length `target` from the start, in the laying direction
+  const N=M.N,s0=LEGS.length?LEGS[0].sFrom:0,dir=S.dir; let lo=0,hi=N;
+  for(let it=0;it<50;it++){const m=(lo+hi)/2; const L=dir>0?arcBetween(M.cum,N,s0,s0+m):arcBetween(M.cum,N,s0-m,s0); if(L<target)lo=m;else hi=m;}
+  return s0+dir*lo; }
+function legSpan(k){ const N=M.N,s0=LEGS[0].sFrom,l=LEGS[k]; let a=(l.sFrom-s0)*S.dir; a=((a%N)+N)%N; if(k===0)a=0; return [a,a+Math.abs(l.sTo-l.sFrom)]; }
+function legAt(s){ const N=M.N,s0=LEGS[0].sFrom; let dd=(S.dir>0?s-s0:s0-s); dd=((dd%N)+N)%N;
+  for(let k=0;k<LEGS.length;k++){const [a,b]=legSpan(k); if(dd>=a-1e-6&&dd<b)return k;} return LEGS.length-1; }
+function halfTxt(){const h=S.passes/2;return `${h} of ${S.passes} pass${S.passes>1?'es':''}`;}
+function ropeFt(v){return S.units==='in'?`${(v/12).toFixed(1)} ft`:`${(v/100).toFixed(2)} m`;}
+function halfMarks(){
+  if(!M||M.error||!LEGS.length) return null;
+  const sHalf=sAtArc(M.total/2);
+  const tu=Math.max(0,+S.takeup||0)/100, tail=Math.max(0,+S.tail||0);
+  const path=M.strandLens.reduce((a,b)=>a+b,0), need=path*(1+tu)+2*tail;
+  const x=Math.max(0,(need/2-tail)/(1+tu)), Lp=path/S.passes;
+  let passNo=Math.min(S.passes-1,Math.floor(x/Lp+1e-9)); let frac=(x-passNo*Lp)/Lp; if(frac<0.002&&passNo>0){passNo--;frac=0.999999;}
+  const sMid=sAtArc(frac*M.total);
+  const sp=Math.max(0,+S.spare||0)/100, halfSpare=need*sp/2;
+  const usedHalf=tail+(Lp/2)*(1+tu)+halfSpare, usedMid=tail+x*(1+tu)+halfSpare;
+  return {atEnd:frac>0.999,sHalf,legHalf:legAt(sHalf),sMid,legMid:legAt(sMid),passNo,ropeMid:need/2,perPassHalf:Lp/2,usedHalf,usedMid};
+}
+function ropeCalc(){
+  if(!M||M.error) return 0;
+  const tu=Math.max(0,+S.takeup||0)/100, tail=Math.max(0,+S.tail||0), sp=Math.max(0,+S.spare||0)/100;
+  const path=M.strandLens.reduce((a,b)=>a+b,0), woven=path*(1+tu), need=woven+2*tail, buy=need*(1+sp);
+  const f=v=>S.units==='in'?`${(v/12).toFixed(1)} ft`:`${(v/100).toFixed(2)} m`;
+  const g=v=>S.units==='in'?`${(v/12*0.3048).toFixed(1)} m`:`${(v/2.54/12).toFixed(1)} ft`;
+  $('tailLbl').textContent='Tail at each end ('+(S.units==='in'?'in':'cm')+')';
+  $('rcTotal').textContent=`${f(buy)}  ·  ${g(buy)}`;
+  const per=M.strandLens.map((L,i)=>`<tr><td>Pass ${i+1} path</td><td>${f(L)}</td></tr>`).join('');
+  $('rcTable').innerHTML=(S.passes<=6?per:`<tr><td>${S.passes} passes × ≈${f(path/S.passes)}</td><td>${f(path)}</td></tr>`)+
+    `<tr><td>Over-under take-up +${Math.round(tu*100)}%</td><td>+${f(path*tu)}</td></tr><tr><td>Two tails</td><td>+${f(2*tail)}</td></tr>`+
+    `<tr class="sum"><td>Rope used</td><td>${f(need)}</td></tr><tr><td>Spare +${Math.round(sp*100)}%</td><td>+${f(need*sp)}</td></tr><tr class="sum"><td>Buy at least</td><td>${f(buy)}</td></tr>`;
+  const HM=halfMarks(); const hmTxt=HM?` The halfway mark is ${halfTxt()} in: ${HM.atEnd?'the end of ':''}pass ${HM.passNo+1}, ${HM.atEnd?'back at the start peg':'leg '+(HM.legMid+1)}. Rope used to get there, counting one tail and half the spare: ${f(HM.usedMid)}.`:'';
+  $('rcNote').textContent=`Path lengths are measured along each pass's centerline, so inner passes come out a little shorter than outer ones. Take-up covers the rope rising over and dipping under at ${M.cross.length} crossings; thicker or stiffer rope needs more, about 6–10% is typical for ${S.passes>1?'multi-pass':'single'} mats.`+hmTxt;
+  return need;
+}
+for(const k of ['takeup','tail','spare']) document.getElementById(k).addEventListener('input',()=>{const v=parseFloat(document.getElementById(k).value);S[k]=isFinite(v)?v:0;save();const r=ropeCalc();const el=document.querySelector('#stats span:last-child b');if(el)el.textContent=fmtRope(r);});
+function badge(k){ if(!S.half) return ''; const HM=halfMarks(); if(!HM) return ''; const b=[];
+  if(HM.legMid===k) b.push(`½ way · ${halfTxt()}, ${HM.atEnd?'end of':'on'} pass ${HM.passNo+1} · ${ropeFt(HM.usedMid)} used`);
+  return b.length?`<span class="badge">${b.map(x=>`<span>${x}</span>`).join('')}</span>`:''; }
+function stepRows(l){ // [{n, ou:'OVER'|'UNDER', from:'T7-B2', step:2}]
+  const lead=S.guideMode!=='follow', arr=lead?l.lead:l.ou, rows=[];
+  arr.forEach((x,i)=>{ if(x==='·') return; const o=LEGS[l.items[i].other];
+    rows.push({ou:x==='O'?'OVER':'UNDER',from:o?`${lab(o.from)}-${lab(o.to)}`:'',step:o?l.items[i].other+1:''}); });
+  return rows; }
+function stepBody(l,k){
+  const rows=stepRows(l), title=`Step ${k+1}: ${esc(lab(l.from))} → ${esc(lab(l.to))}`;
+  if(!rows.length) return `<div class="sh">${title}</div><p class="none">${l.ou.length?'Nothing laid down yet along this run — pull it straight, no over/under.':'No crossings on this run — pull it straight.'}</p>`;
+  return `<div class="sh">${title}</div><table class="out"><thead><tr><th>Order</th><th>Over / Under</th><th>Crosses rope from</th></tr></thead><tbody>`+
+    rows.map((r,i)=>`<tr><td>${i+1}</td><td class="${r.ou==='OVER'?'o':'u'}">${r.ou}</td><td>${esc(r.from)} <span class="sr">(step ${r.step})</span></td></tr>`).join('')+'</tbody></table>'; }
+function seqHTML(l){
+  const lead=S.guideMode!=='follow', arr=lead?l.lead:l.ou;
+  if(!arr.length) return '<em>no crossings</em>';
+  const s='<span class="xs">'+arr.map((x,i)=>{ if(x==='·') return '<span class="x nx">·</span>';
+    const ol=LEGS[l.items[i].other]; const nm=ol?`${esc(lab(ol.from))}→${esc(lab(ol.to))}`:'';
+    return `<span class="x"><b class="${x==='O'?'o':'u'}">${x==='O'?'over':'under'}</b> ${nm}</span>`;}).join('')+'</span>';
+  if(!lead) return s;
+  const w=arr.filter(x=>x!=='·').length; return s+`<span class="cnt">${w?w+' to weave':'nothing to weave yet'}${arr.length-w?`, ${arr.length-w} open`:''}</span>`;
+}
+function guideHint(){ $('lgDot').hidden=S.guideMode==='follow';
+  $('guideHint').textContent=S.guideMode==='follow'
+   ? 'Passes 2 and up run beside the lead, so every crossing already has rope under or over it. Follow the full O/U at each one, keeping to the same side of the lead all the way round.'
+   : 'If a step has nothing listed, just pull it straight. Click a step to lay the rope up to that peg and see each crossing marked on the board.'; }
+function legsUpdate(keepSel){
+  if(!M||M.error) return;
+  const P=M.pegs,n=P.length,i=P.findIndex(e=>e.name===S.start);
+  const nx=esc(lab(P[(i+1)%n].name)), pv=esc(lab(P[(i-1+n)%n].name));
+  $('dir').innerHTML=`<option value="1"${S.dir===1?' selected':''}>toward ${nx}</option><option value="-1"${S.dir===-1?' selected':''}>toward ${pv}</option>`;
+  LEGS=buildLegs(M,S.start,S.dir); save(); if(!keepSel) selLeg=-1; ropeCalc();
+  $('steps').innerHTML=LEGS.map((l,k)=>`<li class="step" tabindex="0" data-k="${k}">${stepBody(l,k)}${badge(k)}</li>`).join('');
+  $('steps').querySelectorAll('.step').forEach(li=>{const go=()=>{stop();selLeg=+li.dataset.k;const l=LEGS[selLeg];prog=legSpan(selLeg)[1]/M.N;if(prog>0.9999)prog=1;markSteps();draw();};
+    li.onclick=go; li.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});
+  guideHint(); markSteps(); draw();
+}
+function markSteps(){ document.querySelectorAll('.step').forEach(li=>li.classList.toggle('on',+li.dataset.k===selLeg)); $('prog').value=Math.round(prog*1000); $('progval').textContent=Math.round(prog*100)+'%'; }
+
+/* drawing */
+function ropeColors(){ if(S.rope==='custom'){return [S.custom,shade(S.custom,-0.55)];} return ROPES[S.rope]||ROPES.manila; }
+function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;const t=f<0?0:255,p=Math.abs(f);r=Math.round((t-r)*p+r);g=Math.round((t-g)*p+g);b=Math.round((t-b)*p+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function boardDims(){ const mg=Math.max(S.W,S.H)*0.075+S.peg*1.2; return {mg,Wb:S.W+2*mg,Hb:S.H+2*mg}; }
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function ptAt(arr,s,N){const i=Math.floor(s),f=s-i;const i0=((i%N)+N)%N,i1=(i0+1)%N;return arr[i0]+(arr[i1]-arr[i0])*f;}
+function tracePath(ctx,sx,sy,a,b,N,T,closed){
+  ctx.beginPath();
+  if(closed){ctx.moveTo(T.x(sx[0]),T.y(sy[0]));for(let i=1;i<N;i++)ctx.lineTo(T.x(sx[i]),T.y(sy[i]));ctx.closePath();return;}
+  ctx.moveTo(T.x(ptAt(sx,a,N)),T.y(ptAt(sy,a,N)));
+  for(let i=Math.ceil(a);i<b;i++){const j=((i%N)+N)%N;ctx.lineTo(T.x(sx[j]),T.y(sy[j]));}
+  ctx.lineTo(T.x(ptAt(sx,b,N)),T.y(ptAt(sy,b,N)));
+}
+function render(ctx,wpx,hpx,opt){
+  const {mg,Wb,Hb}=boardDims(); const sc=wpx/Wb;
+  const T={x:X=>(X+Wb/2)*sc, y:Y=>(Hb/2-Y)*sc};
+  ctx.clearRect(0,0,wpx,hpx);
+  const accent=css('--accent')||'#1e5a86';
+  // board
+  if(S.jig){
+    const BI=boardInk(); ctx.fillStyle=bgColor(); roundRect(ctx,0,0,wpx,hpx,Math.min(wpx,hpx)*0.02); ctx.fill();
+    const minor=S.units==='in'?1:(sc*1>=7?1:5), major=S.units==='in'?6:10;
+    ctx.lineWidth=Math.max(1,sc*0.02);
+    for(const [step,col] of [[minor,`rgba(${BI.grid},.10)`],[major,`rgba(${BI.grid},.22)`]]){
+      if(step*sc<5) continue; ctx.strokeStyle=col; ctx.beginPath();
+      for(let x=-S.W/2;x<=Wb/2;x+=step){ctx.moveTo(T.x(x),0);ctx.lineTo(T.x(x),hpx);} for(let x=-S.W/2-step;x>=-Wb/2;x-=step){ctx.moveTo(T.x(x),0);ctx.lineTo(T.x(x),hpx);}
+      for(let y=S.H/2;y>=-Hb/2;y-=step){ctx.moveTo(0,T.y(y));ctx.lineTo(wpx,T.y(y));} for(let y=S.H/2+step;y<=Hb/2;y+=step){ctx.moveTo(0,T.y(y));ctx.lineTo(wpx,T.y(y));}
+      ctx.stroke();
+    }
+    ctx.setLineDash([sc*0.4,sc*0.3]); ctx.strokeStyle=BI.line; ctx.lineWidth=Math.max(1,sc*0.03);
+    ctx.strokeRect(T.x(-S.W/2),T.y(S.H/2),S.W*sc,S.H*sc); ctx.setLineDash([]);
+  }
+  if(!M||M.error) return;
+  const N=M.N, d=S.d;
+  const full=opt.prog>=0.9999;
+  const s0=LEGS.length?LEGS[0].sFrom:0, dir=S.dir;
+  const a=dir>0?s0:s0-opt.prog*N, b=dir>0?s0+opt.prog*N:s0;
+  ctx.lineJoin='round'; ctx.lineCap='butt';
+  // ghost of the full path
+  if(!full){ctx.save();ctx.setLineDash([sc*0.25,sc*0.25]);ctx.strokeStyle=S.jig?boardInk().line:'rgba(120,120,120,.5)';ctx.lineWidth=Math.max(1,sc*0.04);tracePath(ctx,M.X,M.Y,0,0,N,T,true);ctx.stroke();ctx.restore();}
+  const drawRange=(ra,rb,closed)=>{
+    M.strands.forEach((st,si)=>{ const [fill,edge]=strandColors(si);
+      tracePath(ctx,st.x,st.y,ra,rb,N,T,closed);
+      ctx.strokeStyle=edge; ctx.lineWidth=d*sc; ctx.stroke();
+      ctx.strokeStyle=fill; ctx.lineWidth=d*sc*0.72; ctx.stroke();
+      if(S.texture&&d*sc>4){ctx.save();ctx.setLineDash([d*sc*0.16,d*sc*0.26]);ctx.strokeStyle='rgba(40,25,5,.22)';ctx.lineWidth=d*sc*0.56;ctx.stroke();ctx.restore();}
+    });
+  };
+  if(opt.prog>0.0005){
+    if(full) drawRange(0,0,true); else drawRange(a,b,false);
+    for(const v of M.visits){ if(!v.over) continue;
+      let vs=v.s, del=v.del;
+      if(full){ drawRange(vs-del,vs+del,false); continue; }
+      for(const off of [-N,0,N]){const c=vs+off; if(c>a&&c<b){ const ra=Math.max(a,c-del), rb=Math.min(b,c+del); drawRange(ra,rb,false);} }
+    }
+  }
+  if(S.showHole&&M.centerCross){const H=holeGeom(); if(H&&H.gap>0){
+    const g=M.medGap, c=M.centerCross, cx=c.x+g*H.ca, cy=c.y, hw=H.w/2, hh=H.h/2;
+    ctx.save(); ctx.strokeStyle=accent; ctx.lineWidth=Math.max(2,sc*0.06*(S.units==='in'?1:2.54)); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(T.x(cx-hw),T.y(cy)); ctx.lineTo(T.x(cx),T.y(cy+hh)); ctx.lineTo(T.x(cx+hw),T.y(cy)); ctx.lineTo(T.x(cx),T.y(cy-hh)); ctx.closePath();
+    ctx.fillStyle=accent; ctx.globalAlpha=.18; ctx.fill(); ctx.globalAlpha=1; ctx.stroke();
+    ctx.setLineDash([6*opt.dpr,4*opt.dpr]); ctx.lineWidth=Math.max(1,opt.dpr);
+    ctx.beginPath(); ctx.moveTo(T.x(cx-hw),T.y(cy)); ctx.lineTo(T.x(cx+hw),T.y(cy)); ctx.moveTo(T.x(cx),T.y(cy+hh)); ctx.lineTo(T.x(cx),T.y(cy-hh)); ctx.stroke();
+    const fs2=Math.max(11*opt.dpr,Math.min(15*opt.dpr,sc*0.5)); ctx.font=`600 ${fs2}px "IBM Plex Mono", ui-monospace, monospace`;
+    const txt=`${fmtLen(H.w)} × ${fmtLen(H.h)}`; const tw=ctx.measureText(txt).width, px=T.x(cx), py=T.y(cy-hh)+fs2*1.1;
+    ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fillRect(px-tw/2-5*opt.dpr,py-fs2*0.75,tw+10*opt.dpr,fs2*1.5);
+    ctx.fillStyle='#1b272c'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,px,py); ctx.restore(); }}
+  // selected leg highlight
+  if(opt.sel>=0&&LEGS[opt.sel]){const l=LEGS[opt.sel];ctx.save();ctx.globalAlpha=.38;ctx.strokeStyle=accent;ctx.lineWidth=M.bw*sc*1.25;ctx.lineCap='round';
+    tracePath(ctx,M.X,M.Y,Math.min(l.sFrom,l.sTo),Math.max(l.sFrom,l.sTo),N,T,false);ctx.stroke();ctx.restore();
+    const arr=S.guideMode==='follow'?l.ou:l.lead, rr=Math.max(8*opt.dpr,Math.min(14*opt.dpr,M.bw*sc*0.42));
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`700 ${rr*1.15}px "IBM Plex Mono", ui-monospace, monospace`;
+    let ord=0; l.items.forEach((it,i)=>{const c=M.cross[it.c],x=T.x(c.x),y=T.y(c.y),t=arr[i];
+      ctx.fillStyle=t==='O'?'#1f5fbf':t==='U'?'#c0392b':'rgba(255,255,255,.92)';ctx.strokeStyle=t==='·'?'#5a6a70':'#fff';ctx.lineWidth=2*opt.dpr;
+      ctx.beginPath();ctx.arc(x,y,rr,0,7);ctx.fill();ctx.stroke();ctx.fillStyle=t==='·'?'#5a6a70':'#fff';ctx.fillText(t==='·'?'–':String(++ord),x,y+rr*0.05);});
+    ctx.restore();}
+  // working end
+  if(!full&&opt.prog>0.0005){const e=dir>0?b:a;ctx.fillStyle=accent;ctx.beginPath();ctx.arc(T.x(ptAt(M.X,e,N)),T.y(ptAt(M.Y,e,N)),Math.max(4,M.bw*sc*0.45),0,7);ctx.fill();}
+  // pegs
+  if(S.jig){
+    const r=Math.max(2.5,(opt.exact?S.peg:pegShowDia())/2*sc), fs=Math.max(10*opt.dpr,Math.min(18*opt.dpr,sc*Math.max(S.peg,S.d*2)*0.75));
+    ctx.font=`600 ${fs}px "IBM Plex Mono", ui-monospace, monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(const p of M.pegs){
+      const x=T.x(p.x),y=T.y(p.y);
+      ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.arc(x+r*0.18,y+r*0.22,r,0,7);ctx.fill();
+      const pc=pegHex(); ctx.fillStyle=pc;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+      if(S.pegColor!=='wood'){ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=Math.max(1,r*0.16);ctx.stroke();}
+      ctx.fillStyle=S.pegColor==='wood'?'#8a6038':shade(pc,0.45);ctx.beginPath();ctx.arc(x-r*0.2,y-r*0.2,r*0.55,0,7);ctx.fill();
+      if(p.name===S.start){ctx.strokeStyle=accent;ctx.lineWidth=Math.max(2,r*0.35);ctx.beginPath();ctx.arc(x,y,r*1.55,0,7);ctx.stroke();}
+      if(S.labels){
+        const gap=M.bw/2+mg*0.38; let lx=p.x,ly=p.y;
+        if(p.side==='T')ly=M.ay+gap; if(p.side==='B')ly=-M.ay-gap; if(p.side==='L')lx=-M.ax-gap; if(p.side==='R')lx=M.ax+gap;
+        const t=lab(p.name); ctx.font=`600 ${t.length>4?fs*0.8:fs}px "IBM Plex Mono", ui-monospace, monospace`; ctx.fillStyle=p.name===S.start?(isDark(bgColor())?'#9fd0ff':accent):boardInk().label; ctx.fillText(t,T.x(lx),T.y(ly));
+      }
+    }
+  }
+  if(S.half&&LEGS.length){const HM=halfMarks(); if(HM){
+    const fs3=Math.max(11*opt.dpr,Math.min(15*opt.dpr,sc*0.5));
+    const flag=(x,y,txt,col)=>{ctx.save();const r=Math.max(6*opt.dpr,M.bw*sc*0.42);ctx.fillStyle=col;ctx.strokeStyle='#fff';ctx.lineWidth=2*opt.dpr;
+      ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.font=`700 ${r*1.1}px "IBM Plex Mono", ui-monospace, monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('½',x,y+r*0.05);
+      ctx.font=`600 ${fs3}px "IBM Plex Mono", ui-monospace, monospace`;const tw=ctx.measureText(txt).width;let tx=x+r+6*opt.dpr; if(tx+tw+6*opt.dpr>wpx) tx=x-r-6*opt.dpr-tw; const ty=y;
+      ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(tx-3*opt.dpr,ty-fs3*0.75,tw+6*opt.dpr,fs3*1.5);ctx.fillStyle='#1b272c';ctx.textAlign='left';ctx.fillText(txt,tx,ty);ctx.restore();};
+    {const si=S.passSwap?S.passes-1-HM.passNo:HM.passNo, st=M.strands[si];
+      const mx=T.x(ptAt(st.x,HM.sMid,N)),my=T.y(ptAt(st.y,HM.sMid,N));
+      flag(mx,my,`½ way · ${halfTxt()} · ${ropeFt(HM.usedMid)} used`,'#b4442f');}
+  }}
+}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function draw(){
+  const box=cv.parentElement, {Wb,Hb}=boardDims(), asp=Hb/Wb;
+  const maxH=Math.max(320,window.innerHeight*0.78), cw=Math.min(box.clientWidth,maxH/asp);
+  const dpr=Math.min(2.5,window.devicePixelRatio||1);
+  cv.style.width=cw+'px'; cv.style.margin='0 auto';
+  const w=Math.round(cw*dpr),h=Math.round(cw*asp*dpr); if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  box.style.minHeight=(cw*asp)+'px';
+  render(cv.getContext('2d'),w,h,{prog,sel:selLeg,dpr});
+  $('prog').value=Math.round(prog*1000); $('progval').textContent=Math.round(prog*100)+'%';
+}
+new ResizeObserver(()=>draw()).observe(cv.parentElement);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* exports */
+const f3=v=>(Math.round(v*1000)/1000).toString();
+function svgPath(sx,sy,a,b,N,closed){
+  let out='';
+  if(closed){for(let i=0;i<N;i++)out+=(i?'L':'M')+f3(sx[i])+' '+f3(-sy[i]);return out+'Z';}
+  out='M'+f3(ptAt(sx,a,N))+' '+f3(-ptAt(sy,a,N));
+  for(let i=Math.ceil(a);i<b;i++){const j=((i%N)+N)%N;out+='L'+f3(sx[j])+' '+f3(-sy[j]);}
+  return out+'L'+f3(ptAt(sx,b,N))+' '+f3(-ptAt(sy,b,N));
+}
+function svgHead(){const {Wb,Hb}=boardDims();return `<svg xmlns="http://www.w3.org/2000/svg" width="${f3(Wb)}${S.units}" height="${f3(Hb)}${S.units}" viewBox="${f3(-Wb/2)} ${f3(-Hb/2)} ${f3(Wb)} ${f3(Hb)}">\n`;}
+function pegLabelPos(p){const {mg}=boardDims();const gap=M.bw/2+mg*0.38;let lx=p.x,ly=p.y;if(p.side==='T')ly=M.ay+gap;if(p.side==='B')ly=-M.ay-gap;if(p.side==='L')lx=-M.ax-gap;if(p.side==='R')lx=M.ax+gap;return [lx,ly];}
+function wovenSVG(){
+  const {Wb,Hb}=boardDims(),N=M.N,d=S.d,[fill,edge]=ropeColors(); let s=svgHead();
+  s+=`<title>Rope mat ${S.top}x${S.side} bights, ${S.W}x${S.H} ${S.units}, ${S.passes} passes</title>\n`;
+  if(S.jig) s+=`<rect x="${f3(-Wb/2)}" y="${f3(-Hb/2)}" width="${f3(Wb)}" height="${f3(Hb)}" fill="${bgColor()}"/>\n`;
+  s+=`<g fill="none" stroke-linejoin="round" stroke-linecap="butt">\n<defs>`;
+  M.strands.forEach((st,i)=>s+=`<path id="s${i}" d="${svgPath(st.x,st.y,0,0,N,true)}"/>`); s+='</defs>\n';
+  const both=(id,i)=>{const [fill,edge]=strandColors(i);return `<use href="#${id}" stroke="${edge}" stroke-width="${f3(d)}"/><use href="#${id}" stroke="${fill}" stroke-width="${f3(d*0.72)}"/>\n`;};
+  M.strands.forEach((st,i)=>s+=both('s'+i,i));
+  for(const v of M.visits){if(!v.over)continue; M.strands.forEach((st,i)=>{const [fill,edge]=strandColors(i);const p=svgPath(st.x,st.y,v.s-v.del,v.s+v.del,N,false);
+    s+=`<path d="${p}" stroke="${edge}" stroke-width="${f3(d)}"/><path d="${p}" stroke="${fill}" stroke-width="${f3(d*0.72)}"/>\n`;});}
+  s+='</g>\n';
+  if(S.jig){const fs=Math.max(S.peg,S.d*2)*0.7; s+=`<g font-family="monospace" font-weight="600" font-size="${f3(fs)}" text-anchor="middle" dominant-baseline="middle">\n`;
+    for(const p of M.pegs){const [lx,ly]=pegLabelPos(p); s+=`<circle cx="${f3(p.x)}" cy="${f3(-p.y)}" r="${f3(S.peg/2)}" fill="${pegHex()}" stroke="#000" stroke-opacity=".5" stroke-width="${f3(S.peg*0.06)}"/><text x="${f3(lx)}" y="${f3(-ly)}" fill="${boardInk().label}">${esc(lab(p.name))}</text>\n`;}
+    s+='</g>\n';}
+  return s+'</svg>\n';
+}
+function jigSVG(){
+  const {Wb,Hb}=boardDims(),N=M.N; const lw=S.units==='in'?0.02:0.05; let s=svgHead();
+  s+=`<title>Jig template ${S.top}x${S.side}, ${S.W}x${S.H} ${S.units} — print at 100%</title>\n`;
+  s+=`<rect x="${f3(-Wb/2)}" y="${f3(-Hb/2)}" width="${f3(Wb)}" height="${f3(Hb)}" fill="#fff" stroke="#000" stroke-width="${lw}"/>\n`;
+  s+=`<rect x="${f3(-S.W/2)}" y="${f3(-S.H/2)}" width="${f3(S.W)}" height="${f3(S.H)}" fill="none" stroke="#777" stroke-width="${lw}" stroke-dasharray="${f3(lw*10)} ${f3(lw*6)}"/>\n`;
+  s+=`<path d="${svgPath(M.X,M.Y,0,0,N,true)}" fill="none" stroke="#999" stroke-width="${lw}"/>\n`;
+  const fs=Math.max(S.peg,S.d*2)*0.55, r=S.peg/2;
+  s+=`<g font-family="monospace" font-size="${f3(fs)}" text-anchor="middle" dominant-baseline="middle">\n`;
+  for(const p of M.pegs){const [lx,ly]=pegLabelPos(p);const cx=f3(p.x),cy=f3(-p.y);
+    s+=`<circle cx="${cx}" cy="${cy}" r="${f3(r)}" fill="none" stroke="#000" stroke-width="${lw}"/><path d="M${f3(p.x-r*1.3)} ${cy}H${f3(p.x+r*1.3)}M${cx} ${f3(-p.y-r*1.3)}V${f3(-p.y+r*1.3)}" stroke="#000" stroke-width="${lw}"/>`;
+    s+=`<text x="${f3(lx)}" y="${f3(-ly)}" font-weight="700">${esc(lab(p.name))}</text>\n`;}
+  const cs=S.units==='in'?1:5, x0=-Wb/2+cs*0.4, y0=Hb/2-cs*1.4;
+  s+=`<rect x="${f3(x0)}" y="${f3(y0)}" width="${cs}" height="${cs}" fill="none" stroke="#000" stroke-width="${lw}"/><text x="${f3(x0+cs*1.2)}" y="${f3(y0+cs/2)}" text-anchor="start">${cs} ${S.units} check square</text>\n`;
+  return s+'</g>\n</svg>\n';
+}
+function csvq(s){s=String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function xName(l,i){const o=LEGS[l.items[i].other];return o?lab(o.from)+'-'+lab(o.to):'';}
+function guideHTML(){
+  const lead=S.guideMode!=='follow', today=new Date().toISOString().slice(0,10);
+  const route=[LEGS[0].from].concat(LEGS.slice(0,2).map(l=>l.to)).map(lab).join('→')+'→…→'+lab(LEGS[0].from);
+  const title=`${S.top}×${S.side} Rope Mat – Over/Under Threading Guide (${lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`;
+  let b=`<h1>${esc(title)}</h1><div class="sub">${today} · ${esc(fmtLen(S.W))} × ${esc(fmtLen(S.H))} · ${S.passes} pass${S.passes>1?'es':''} of ${esc(fmtLen(S.d))} rope · start at ${esc(lab(LEGS[0].from))}</div>`;
+  b+= lead? `<p>How to use this: work through the steps in order, 1 to ${LEGS.length} (${esc(route)}). Each step below only lists crossings with rope that is <b>already down</b> by the time you get there. If a step has no entries listed, just pull it straight — there's nothing there yet to weave through. (Crossings with rope that doesn't exist yet will show up later, listed under whichever future step lays that rope.)${S.passes>1?' This covers the first pass. For the following passes, print the "passes 2 and up" guide.':''}</p>`
+          : `<p>How to use this: these passes run beside the lead, so every crossing already has rope there. Work through the steps in order, 1 to ${LEGS.length} (${esc(route)}), and follow every over/under listed, keeping to the same side of the lead the whole way round.</p>`;
+  LEGS.forEach((l,k)=>{ const rows=stepRows(l); b+=`<h2>Step ${k+1}: ${esc(lab(l.from))} → ${esc(lab(l.to))}</h2>`;
+    if(!rows.length){ b+=`<p class="none">${l.ou.length?'Nothing laid down yet along this run — pull it straight, no over/under.':'No crossings on this run — pull it straight.'}</p>`; return; }
+    b+='<table><tr><th>Order</th><th>Over / Under</th><th>Crosses rope from</th></tr>'+rows.map((r,i)=>`<tr><td>${i+1}</td><td class="${r.ou==='OVER'?'o':'u'}">${r.ou}</td><td>${esc(r.from)}&nbsp; (step ${r.step})</td></tr>`).join('')+'</table>'; });
+  const css=`body{font-family:Arial,Helvetica,sans-serif;color:#222;max-width:780px;margin:40px auto;padding:0 24px;line-height:1.45}
+h1{text-align:center;font-size:28px;margin:0 0 6px}.sub{color:#666;margin-bottom:16px}h2{font-size:18px;margin:26px 0 10px;page-break-after:avoid}
+p.none{color:#777;margin:0 0 0 4px}table{border-collapse:collapse;min-width:450px;page-break-inside:avoid}
+th{background:#3a3a3a;color:#fff;padding:7px 12px;font-size:14px}td{border:1px solid #ccc;padding:6px 12px;text-align:center;font-size:14px}
+tr:nth-child(odd) td{background:#f2f2f2}td.o{color:#1f5fbf;font-weight:700}td.u{color:#b2302a;font-weight:700}
+@media print{body{margin:0}}`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${css}</style></head><body>${b}</body></html>`;
+}
+function guidePDF(){
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'pt',format:'letter'});
+  const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight(), ML=63, MR=63, MT=64, MB=60, TW=PW-ML-MR;
+  const lead=S.guideMode!=='follow', today=new Date().toISOString().slice(0,10);
+  const plain=s=>String(s).replace(/×/g,'x');
+  const title=`${S.top}x${S.side} Rope Mat – Over/Under Threading Guide (${lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`.replace('–','-');
+  let y=MT;
+  doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(17);
+  doc.splitTextToSize(title,TW-40).forEach(line=>{doc.text(line,PW/2,y,{align:'center'});y+=26;});
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(110);
+  doc.text(plain(`${today} · ${fmtLen(S.W)} x ${fmtLen(S.H)} · ${S.passes} pass${S.passes>1?'es':''} of ${fmtLen(S.d)} rope · start at ${lab(LEGS[0].from)}`),ML,y); y+=22;
+  // how-to paragraph with a bold "already down"
+  const route=[LEGS[0].from,LEGS[0].to,LEGS[1].to].map(lab).join(' > ')+' > ... > '+lab(LEGS[0].from);
+  const para = lead
+    ? `How to use this: work through the steps in order, 1 to ${LEGS.length} (${route}). Each step below only lists crossings with rope that is **already down** by the time you get there. If a step has no entries listed, just pull it straight — there's nothing there yet to weave through. (Crossings with rope that doesn't exist yet will show up later, listed under whichever future step lays that rope.)`+(S.passes>1?' This covers the first pass; export again with "Passes 2 and up" selected for the following passes.':'')
+    : `How to use this: these passes run beside the lead, so every crossing already has rope there. Work through the steps in order, 1 to ${LEGS.length} (${route}), and follow every over/under listed, keeping to the same side of the lead the whole way round.`;
+  doc.setTextColor(30); doc.setFontSize(10.5);
+  const words=para.split(/(\*\*[^*]+\*\*|\s+)/).filter(w=>w!=='');
+  let x=ML; const lh=15;
+  for(const w0 of words){ const bold=/^\*\*/.test(w0); const w=bold?w0.slice(2,-2):w0;
+    if(/^\s+$/.test(w)){ x+=doc.getTextWidth(' '); continue; }
+    const parts=bold?w.split(' '):[w];
+    parts.forEach((pt,pi)=>{ doc.setFont('helvetica',bold?'bold':'normal'); const tw=doc.getTextWidth(pt);
+      if(x+tw>ML+TW){x=ML;y+=lh;} doc.text(pt,x,y); x+=tw+(pi<parts.length-1?doc.getTextWidth(' '):0); }); }
+  y+=lh+12;
+  const arrowText=(a,b,yy)=>{ doc.setFont('helvetica','bold'); doc.setFontSize(13.5); doc.setTextColor(25);
+    let xx=ML; doc.text(a,xx,yy); xx+=doc.getTextWidth(a)+5;
+    doc.setDrawColor(25); doc.setLineWidth(0.9); doc.line(xx,yy-4.5,xx+11,yy-4.5); doc.line(xx+11,yy-4.5,xx+7.5,yy-7); doc.line(xx+11,yy-4.5,xx+7.5,yy-2); xx+=16;
+    doc.text(b,xx,yy); };
+  const rowH=20.5;
+  LEGS.forEach((l,k)=>{
+    const rows=stepRows(l); const need=28+(rows.length?(rows.length+1)*rowH+10:22);
+    if(y+need>PH-MB){doc.addPage();y=MT;}
+    arrowText(`Step ${k+1}: ${lab(l.from)}`,lab(l.to),y); y+=14;
+    if(!rows.length){ doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(115);
+      doc.text(l.ou.length?'Nothing laid down yet along this run — pull it straight, no over/under.':'No crossings on this run — pull it straight.',ML+3,y+6); y+=30; return; }
+    doc.autoTable({startY:y,margin:{left:ML},tableWidth:300,theme:'grid',
+      head:[['Order','Over / Under','Crosses rope from']],
+      body:rows.map((r,i)=>[String(i+1),r.ou,`${r.from}  (step ${r.step})`]),
+      styles:{font:'helvetica',fontSize:10,halign:'center',valign:'middle',cellPadding:{top:5,bottom:5,left:6,right:6},lineColor:[200,200,200],lineWidth:0.6,textColor:[25,25,25],minCellHeight:rowH},
+      headStyles:{fillColor:[58,58,58],textColor:255,fontStyle:'bold',lineColor:[58,58,58]},
+      alternateRowStyles:{fillColor:[242,242,242]}, bodyStyles:{fillColor:[255,255,255]},
+      columnStyles:{0:{cellWidth:45},1:{cellWidth:92},2:{cellWidth:163}},
+      didParseCell:d=>{ if(d.section==='body'&&d.column.index===1){ d.cell.styles.fontStyle='bold'; d.cell.styles.textColor=d.cell.raw==='OVER'?[31,95,191]:[176,48,42]; } },
+      rowPageBreak:'avoid'});
+    y=doc.lastAutoTable.finalY+26;
+  });
+  return doc.output('arraybuffer');
+}
+function guideCSV(){
+  const toIn=v=>S.units==='in'?v:v/2.54, toCm=v=>S.units==='in'?v*2.54:v;
+  const dual=v=>`${toIn(v).toFixed(2)} in / ${toCm(v).toFixed(1)} cm`;
+  const rope=ropeCalc();
+  const rows=[['Rope mat',`${S.top}x${S.side} bights`,`${S.passes} passes`],
+    ['Mat size',`${toIn(S.W).toFixed(2)} x ${toIn(S.H).toFixed(2)} in`,`${toCm(S.W).toFixed(1)} x ${toCm(S.H).toFixed(1)} cm`],
+    ['Rope diameter',dual(S.d)],['Peg diameter',dual(S.peg)],
+    ['Rope used',`${(toIn(rope)/12).toFixed(1)} ft`,`${(toCm(rope)/100).toFixed(2)} m`,'take-up %',S.takeup,'tails each',dual(S.tail)],[],
+    ['Peg','X from mat left (in)','Y from mat top (in)','X from mat left (cm)','Y from mat top (cm)','X from mat left (mm)','Y from mat top (mm)']];
+  const order=s=>'TRBL'.indexOf(s[0])*100+parseInt(s.slice(1));
+  M.pegs.slice().sort((a,b)=>order(a.name)-order(b.name)).forEach(p=>{const x=p.x+S.W/2,y=S.H/2-p.y;
+    rows.push([csvq(lab(p.name)),toIn(x).toFixed(3),toIn(y).toFixed(3),toCm(x).toFixed(2),toCm(y).toFixed(2),(toCm(x)*10).toFixed(1),(toCm(y)*10).toFixed(1)]);});
+  rows.push([],['Leg','From','To','Pass 1 lead (. = nothing there yet)','Passes 2+ (every crossing)']);
+  LEGS.forEach((l,k)=>rows.push([k+1,csvq(lab(l.from)),csvq(lab(l.to)),l.lead.map((x,i)=>x==='·'?'.':x+'('+xName(l,i)+')').join(' '),l.ou.map((x,i)=>x+'('+xName(l,i)+')').join(' ')]));
+  return rows.map(r=>r.join(',')).join('\n')+'\n';
+}
+async function doExport(kind){
+  if(!M||M.error){toast('Fix the bight counts first.');return;}
+  const base=`rope-mat-${S.top}x${S.side}-${S.W}x${S.H}${S.units}`;
+  let filename,data;
+  if(kind==='svg'){filename=base+'.svg';data=wovenSVG();}
+  else if(kind==='jig'){filename=base+'-jig.svg';data=jigSVG();}
+  else if(kind==='csv'){filename=base+'-guide.csv';data=guideCSV();}
+  else if(kind==='pdf'){ if(window.jspdf&&window.jspdf.jsPDF){filename=base+'-threading-guide.pdf';data=guidePDF();} else {filename=base+'-threading-guide.html';data=guideHTML();} }
+  else { const {Wb,Hb}=boardDims(); const w=3200,h=Math.round(w*Hb/Wb); const c=document.createElement('canvas');c.width=w;c.height=h;
+    render(c.getContext('2d'),w,h,{prog:1,sel:-1,exact:true,dpr:w/Math.max(1,cv.clientWidth)}); data=await new Promise(r=>c.toBlob(r,'image/png')); filename=base+'.png'; }
+  if(dl){ try{await dl.save({filename,data});toast('Saved '+filename);}catch(e){ if(e&&e.code==='declined')return; toast(e&&e.code==='rate_limited'?'A save prompt is already open.':'Saving is not available here.'); } return; }
+  if(!window.claude){ // standalone site: normal browser download
+    const blob=data instanceof Blob?data:new Blob([data],{type:{svg:'image/svg+xml',csv:'text/csv',html:'text/html',pdf:'application/pdf'}[filename.split('.').pop()]||'application/octet-stream'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);toast('Saved '+filename);return; }
+  if(typeof data==='string'){ try{await navigator.clipboard.writeText(data);toast('Copied '+filename.split('.').pop().toUpperCase()+' to the clipboard');}catch(e){toast('Saving is not available in this view.');} }
+  else toast('Saving is not available in this view.');
+}
+document.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>doExport(b.dataset.exp));
+const TIP_URL='https://ko-fi.com/jm2080'; // tip jar link
+if(TIP_URL){$('tip').href=TIP_URL;$('tip').hidden=false;}
+if(window.claude&&window.claude.use){ window.claude.use('downloads').then(x=>{dl=x; if(!x) $('expnote').textContent='Saving files is not available in this view, so SVG and CSV exports copy to the clipboard instead.';}).catch(()=>{}); }
+
+rebuild();
+</script>
+
+</body></html>
