@@ -4,7 +4,7 @@
 <meta name="description" content="Free rope mat designer: rectangular woven mats with a labeled peg jig, over/under threading guide, rope estimate and true-size SVG/PDF exports.">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
-<title>Rope Mat Designer</title>
+<title>Rope Mat Designer (master)</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -93,7 +93,7 @@ canvas{display:block;width:100%;height:auto}
 .badge{font-size:11.5px;font-weight:600;color:var(--accent);display:flex;gap:8px;flex-wrap:wrap}
 .badge span{background:var(--accent-soft);border-radius:999px;padding:1px 8px}
 .exports{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--line);align-items:center}
-.exports .exp-row{flex-basis:100%;display:flex}
+.exports .exp-row{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px}
 .exports .note{color:var(--muted);font-size:12.5px;flex-basis:100%}
 .guide .startrow{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-bottom:10px}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted);margin-bottom:8px}
@@ -230,7 +230,7 @@ details[open] summary{margin-bottom:6px}
       <button class="btn" type="button" data-exp="svg">Woven SVG (1:1)</button>
       <button class="btn" type="button" data-exp="jig">Jig template SVG</button>
       <button class="btn" type="button" data-exp="csv">Guide and pegs CSV</button>
-      <div class="exp-row"><button class="btn primary" type="button" data-exp="pdf">Weave Instructions PDF</button></div>
+      <div class="exp-row"><button class="btn primary" type="button" data-exp="pdf">Weave Instructions PDF</button><button class="btn primary" type="button" data-exp="jigpdf">Jig Template PDF (8.5×11 tiles)</button></div>
       <span class="note" id="expnote">SVGs are drawn at true size in your chosen units, ready to print or tile for drilling the jig.</span>
     </div>
   </main>
@@ -494,7 +494,7 @@ function rebuild(){
   const names=M.pegs.map(e=>e.name); if(!names.includes(S.start)) S.start=names.includes('R1')?'R1':names[0];
   fillStart(); buildNames();
   const rope=ropeCalc(); holesCalc();
-  $('stats').innerHTML=[['Mat',`${fmtLen(S.W)} × ${fmtLen(S.H)}`],['Bights',`${S.top} × ${S.side}`],['Pegs',M.pegs.length],['Crossings',M.cross.length],['Holes ≈',(()=>{const H=holeGeom();return H&&H.gap>0?`${fmtLen(H.w)} × ${fmtLen(H.h)}`:'closed';})()],['Rope used ≈',`${fmtRope(rope)}`]].map(([a,b])=>`<span>${a} <b>${b}</b></span>`).join('');
+  $('stats').innerHTML=[['Mat',`${fmtLen(S.W)} (W) × ${fmtLen(S.H)} (H)`],['Bights',`${S.top} × ${S.side}`],['Pegs',M.pegs.length],['Crossings',M.cross.length],['Holes ≈',(()=>{const H=holeGeom();return H&&H.gap>0?`${fmtLen(H.w)} (W) × ${fmtLen(H.h)} (H)`:'closed';})()],['Rope used ≈',`${fmtRope(rope)}`]].map(([a,b])=>`<span>${a} <b>${b}</b></span>`).join('');
   const c=M.clearance, fit=$('fit');
   if(c<0){fit.className='fit bad';fit.textContent=`Tight: neighbouring lanes overlap by about ${fmtLen(-c)}. Use fewer passes, thinner rope, fewer bights or a larger mat.`;}
   else{const more=Math.floor(c/S.d);fit.className='fit ok';fit.textContent=`About ${fmtLen(c)} of open space between lanes`+(more>=1?` — room for roughly ${more} more pass${more>1?'es':''}.`:', a snug fill.')+``;}
@@ -512,9 +512,9 @@ function holesCalc(){
   const L=fmtLen, u=S.units==='in'?'in²':'cm²';
   if(H.gap<=0){ $('hlTotal').textContent='closed'; $('hlTable').innerHTML=`<tr><td>Ropes overlap by</td><td>${L(-H.gap)}</td></tr>`;
     $('hlNote').textContent='There are no open holes at this setting; the lanes press into each other. Use fewer passes, thinner rope, fewer bights or a larger mat.'; return; }
-  $('hlTotal').textContent=`${L(H.w)} × ${L(H.h)}`;
+  $('hlTotal').textContent=`${L(H.w)} (W) × ${L(H.h)} (H)`;
   const sq=Math.abs(H.deg-90)<6;
-  $('hlTable').innerHTML=`<tr><td>Across corners, wide × tall</td><td>${L(H.w)} × ${L(H.h)}</td></tr>`+
+  $('hlTable').innerHTML=`<tr><td>Across corners, width × height</td><td>${L(H.w)} (W) × ${L(H.h)} (H)</td></tr>`+
    `<tr><td>Side length (rope edge to rope edge)</td><td>${L(H.a)}</td></tr>`+
    `<tr><td>Clear gap between parallel ropes</td><td>${L(H.gap)}</td></tr>`+
    `<tr><td>Open area per hole</td><td>${(+H.area.toFixed(S.units==='in'?2:1))} ${u}</td></tr>`+
@@ -669,7 +669,7 @@ function render(ctx,wpx,hpx,opt){
     ctx.setLineDash([6*opt.dpr,4*opt.dpr]); ctx.lineWidth=Math.max(1,opt.dpr);
     ctx.beginPath(); ctx.moveTo(T.x(cx-hw),T.y(cy)); ctx.lineTo(T.x(cx+hw),T.y(cy)); ctx.moveTo(T.x(cx),T.y(cy+hh)); ctx.lineTo(T.x(cx),T.y(cy-hh)); ctx.stroke();
     const fs2=Math.max(11*opt.dpr,Math.min(15*opt.dpr,sc*0.5)); ctx.font=`600 ${fs2}px "IBM Plex Mono", ui-monospace, monospace`;
-    const txt=`${fmtLen(H.w)} × ${fmtLen(H.h)}`; const tw=ctx.measureText(txt).width, px=T.x(cx), py=T.y(cy-hh)+fs2*1.1;
+    const txt=`${fmtLen(H.w)} (W) × ${fmtLen(H.h)} (H)`; const tw=ctx.measureText(txt).width, px=T.x(cx), py=T.y(cy-hh)+fs2*1.1;
     ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fillRect(px-tw/2-5*opt.dpr,py-fs2*0.75,tw+10*opt.dpr,fs2*1.5);
     ctx.fillStyle='#1b272c'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,px,py); ctx.restore(); }}
   // selected leg highlight
@@ -775,7 +775,7 @@ function guideHTML(){
   const lead=S.guideMode!=='follow', today=new Date().toISOString().slice(0,10);
   const route=[LEGS[0].from].concat(LEGS.slice(0,2).map(l=>l.to)).map(lab).join('→')+'→…→'+lab(LEGS[0].from);
   const title=`${S.top}×${S.side} Rope Mat – Over/Under Threading Guide (${lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`;
-  let b=`<h1>${esc(title)}</h1><div class="sub">${today} · ${esc(fmtLen(S.W))} × ${esc(fmtLen(S.H))} · ${S.passes} pass${S.passes>1?'es':''} of ${esc(fmtLen(S.d))} rope · start at ${esc(lab(LEGS[0].from))}</div>`;
+  let b=`<h1>${esc(title)}</h1><div class="sub">${today} · ${esc(fmtLen(S.W))} (W) × ${esc(fmtLen(S.H))} (H) · ${S.passes} pass${S.passes>1?'es':''} of ${esc(fmtLen(S.d))} rope · start at ${esc(lab(LEGS[0].from))}</div>`;
   b+= lead? `<p>How to use this: work through the steps in order, 1 to ${LEGS.length} (${esc(route)}). Each step below only lists crossings with rope that is <b>already down</b> by the time you get there. If a step has no entries listed, just pull it straight — there's nothing there yet to weave through. (Crossings with rope that doesn't exist yet will show up later, listed under whichever future step lays that rope.)${S.passes>1?' This covers the first pass. For the following passes, print the "passes 2 and up" guide.':''}</p>`
           : `<p>How to use this: these passes run beside the lead, so every crossing already has rope there. Work through the steps in order, 1 to ${LEGS.length} (${esc(route)}), and follow every over/under listed, keeping to the same side of the lead the whole way round.</p>`;
   LEGS.forEach((l,k)=>{ const rows=stepRows(l); b+=`<h2>Step ${k+1}: ${esc(lab(l.from))} → ${esc(lab(l.to))}</h2>`;
@@ -789,6 +789,90 @@ tr:nth-child(odd) td{background:#f2f2f2}td.o{color:#1f5fbf;font-weight:700}td.u{
 @media print{body{margin:0}}`;
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${css}</style></head><body>${b}</body></html>`;
 }
+function jigPDF(){
+  const {jsPDF}=window.jspdf, IN=S.units==='in'?1:1/2.54, PT=72; // world units -> inches -> points
+  const PAD=1.75; const BW=S.W*IN+2*PAD, BH=S.H*IN+2*PAD; // template = mat + 1.75 in all round (room for labels)
+  const M0=0.4; // page margin (in)
+  const fit=(pw,ph)=>{const uw=pw-2*M0, uh=ph-2*M0-0.35-0.8; return {pw,ph,uw,uh,cols:Math.ceil(BW/uw),rows:Math.ceil(BH/uh)};};
+  const P=fit(8.5,11), L=fit(11,8.5); const G=(L.cols*L.rows<P.cols*P.rows)?L:P; const orient=G===L?'landscape':'portrait';
+  const doc=new jsPDF({unit:'pt',format:'letter',orientation:orient});
+  const colName=c=>String.fromCharCode(65+c), tileName=(r,c)=>colName(c)+(r+1);
+  const lw=0.6, mm=v=>v*PT;
+  // world (centred, y up) -> board inches (from top-left)
+  const bx=X=>(X+S.W/2)*IN+PAD, by=Y=>(S.H/2-Y)*IN+PAD;
+  // decimated centreline
+  const step=Math.max(1,Math.floor(M.N/1400)), pts=[]; for(let i=0;i<M.N;i+=step) pts.push([bx(M.X[i]),by(M.Y[i])]); pts.push(pts[0]);
+  const scaleBar=(x,y)=>{ // 0-5 in ruler + 10 cm ruler, x,y in pt (top-left)
+    doc.setDrawColor(0);doc.setLineWidth(0.8);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(0);
+    doc.line(x,y,x+5*PT,y); for(let i=0;i<=20;i++){const t=i%4===0?7:(i%2===0?4.5:2.5);doc.line(x+i*PT/4,y,x+i*PT/4,y+t); if(i%4===0) doc.text(String(i/4),x+i*PT/4,y+14,{align:'center'});}
+    doc.text('inches',x+5*PT+6,y+5);
+    const cy=y+26, cm=PT/2.54; doc.line(x,cy,x+10*cm,cy); for(let i=0;i<=100;i++){const t=i%10===0?7:(i%5===0?4.5:2);doc.line(x+i*cm/10,cy,x+i*cm/10,cy+t); if(i%10===0) doc.text(String(i/10),x+i*cm/10,cy+14,{align:'center'});}
+    doc.text('cm',x+10*cm+6,cy+5);
+    doc.rect(x+5*PT+50,y-2,PT,PT); doc.setFontSize(7); doc.text('1 in square',x+5*PT+50+PT/2,y+PT+9,{align:'center'});
+  };
+  const drawBoard=(ox,oy,clip)=>{ // ox,oy: pt offset of board origin on page
+    const X=v=>ox+v*PT, Y=v=>oy+v*PT;
+    doc.setDrawColor(0);doc.setLineWidth(lw);doc.rect(X(0),Y(0),BW*PT,BH*PT);
+    doc.setDrawColor(130);doc.setLineDashPattern([6,4],0);doc.rect(X(bx(-S.W/2)),Y(by(S.H/2)),S.W*IN*PT,S.H*IN*PT);doc.setLineDashPattern([],0);
+    // 1-inch / 1-cm grid, very light
+    doc.setDrawColor(225);doc.setLineWidth(0.3); const gs=S.units==='in'?1:1/2.54, vx0=(clip.x-ox)/PT, vx1=vx0+clip.w/PT, vy0=(clip.y-oy)/PT, vy1=vy0+clip.h/PT;
+    for(let x=PAD%gs;x<=BW+1e-6;x+=gs) if(x>=vx0-0.01&&x<=vx1+0.01) doc.line(X(x),Y(Math.max(0,vy0)),X(x),Y(Math.min(BH,vy1)));
+    for(let y=PAD%gs;y<=BH+1e-6;y+=gs) if(y>=vy0-0.01&&y<=vy1+0.01) doc.line(X(Math.max(0,vx0)),Y(y),X(Math.min(BW,vx1)),Y(y));
+    // centreline
+    doc.setDrawColor(150);doc.setLineWidth(0.5); const segs=[]; for(let i=1;i<pts.length;i++) segs.push([(pts[i][0]-pts[i-1][0])*PT,(pts[i][1]-pts[i-1][1])*PT]);
+    doc.lines(segs,X(pts[0][0]),Y(pts[0][1]),[1,1],'S',false);
+    // pegs
+    const r=S.peg/2*IN; doc.setDrawColor(0);doc.setLineWidth(0.8);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0);
+    for(const p of M.pegs){const cx=bx(p.x),cy=by(p.y);
+      doc.circle(X(cx),Y(cy),r*PT,'S'); doc.setLineWidth(0.5); doc.line(X(cx-r*1.4),Y(cy),X(cx+r*1.4),Y(cy)); doc.line(X(cx),Y(cy-r*1.4),X(cx),Y(cy+r*1.4)); doc.setLineWidth(0.8);
+      const [lx,ly]=pegLabelPos(p); doc.text(lab(p.name),X(bx(lx)),Y(by(ly))+3,{align:'center'}); }
+  };
+  // ---- cover page
+  const PW=G.pw*PT, PH=G.ph*PT;
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(17);doc.text(`${S.top}x${S.side} Rope Mat - Jig Template`,PW/2,54,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(90);
+  doc.text(`Mat ${fmtLen(S.W)} (W) x ${fmtLen(S.H)} (H) · ${M.pegs.length} pegs of ${fmtLen(S.peg)} · template ${(BW).toFixed(1)} x ${(BH).toFixed(1)} in · ${G.rows*G.cols} pages (${G.cols} across x ${G.rows} down)`,PW/2,72,{align:'center'});
+  // overview
+  const ovW=PW-2*M0*PT, ovH=PH*0.46, sc=Math.min(ovW/(G.cols*G.uw*PT),ovH/(G.rows*G.uh*PT)); const ox0=(PW-G.cols*G.uw*PT*sc)/2, oy0=92;
+  doc.setDrawColor(0);doc.setLineWidth(0.6);
+  const segsO=[]; for(let i=1;i<pts.length;i++) segsO.push([(pts[i][0]-pts[i-1][0])*PT*sc,(pts[i][1]-pts[i-1][1])*PT*sc]);
+  doc.setDrawColor(150);doc.lines(segsO,ox0+pts[0][0]*PT*sc,oy0+pts[0][1]*PT*sc,[1,1],'S',false);
+  doc.setDrawColor(0);doc.rect(ox0,oy0,BW*PT*sc,BH*PT*sc);
+  doc.setFillColor(0); for(const p of M.pegs) doc.circle(ox0+bx(p.x)*PT*sc,oy0+by(p.y)*PT*sc,Math.max(1.2,S.peg/2*IN*PT*sc),'F');
+  doc.setDrawColor(31,95,191);doc.setLineWidth(0.8);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(31,95,191);
+  for(let r=0;r<G.rows;r++)for(let c=0;c<G.cols;c++){const x=ox0+c*G.uw*PT*sc,y=oy0+r*G.uh*PT*sc;doc.rect(x,y,G.uw*PT*sc,G.uh*PT*sc);doc.text(tileName(r,c),x+G.uw*PT*sc/2,y+G.uh*PT*sc/2+4,{align:'center'});}
+  let y=oy0+G.rows*G.uh*PT*sc+28; doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('How to print and assemble',M0*PT,y); y+=16;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  ['1. Print on letter paper at 100% / "Actual size". Turn off "Fit to page" and "Scale".',
+   '2. Check the scale on any page: the inch ruler should measure 5 in and the square exactly 1 in. If not, reprint.',
+   `3. Lay the pages out by their labels (A1 top-left, letters across, numbers down). Each page edge says which page joins it.`,
+   '4. Trim along the solid outer line on the edges that join another page, butt the pages together, and line up the corner crosses.',
+   '5. Tape on the back, then tape or spray-glue the template to your board and drill at each crosshair.',
+   `Pegs are drawn at their true ${fmtLen(S.peg)} size. Dashed rectangle = mat outline; grey line = rope path.`].forEach(t=>{doc.splitTextToSize(t,PW-2*M0*PT).forEach(l=>{doc.text(l,M0*PT,y);y+=13;});y+=2;});
+  scaleBar(M0*PT,PH-M0*PT-44);
+  // ---- tiles
+  for(let r=0;r<G.rows;r++)for(let c=0;c<G.cols;c++){
+    doc.addPage('letter',orient);
+    const x0=M0*PT, y0=M0*PT+0.35*PT, uw=G.uw*PT, uh=G.uh*PT;
+    // header
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(17);doc.text(`Page ${tileName(r,c)}`,x0,M0*PT+8);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(90);doc.text(`${S.top}x${S.side} jig · row ${r+1} of ${G.rows}, column ${colName(c)} of ${colName(G.cols-1)} · print at 100%`,x0+70,M0*PT+8);
+    // clipped board
+    doc.saveGraphicsState(); doc.rect(x0,y0,uw,uh,null); doc.clip(); doc.discardPath();
+    drawBoard(x0-c*uw,y0-r*uh,{x:x0,y:y0,w:uw,h:uh}); doc.restoreGraphicsState();
+    // tile frame + corner crosses
+    doc.setDrawColor(0);doc.setLineWidth(0.9);doc.rect(x0,y0,uw,uh);
+    doc.setLineWidth(0.6); for(const [cx,cy] of [[x0,y0],[x0+uw,y0],[x0,y0+uh],[x0+uw,y0+uh]]){doc.line(cx-9,cy,cx+9,cy);doc.line(cx,cy-9,cx,cy+9);}
+    // neighbour labels
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(31,95,191);
+    if(c>0) doc.text(`< ${tileName(r,c-1)}`,x0-3,y0+uh/2,{angle:90,align:'center'});
+    if(c<G.cols-1) doc.text(`${tileName(r,c+1)} >`,x0+uw+9,y0+uh/2,{angle:90,align:'center'});
+    if(r>0) doc.text(`^ ${tileName(r-1,c)}`,x0+uw/2,y0-4,{align:'center'});
+    if(r<G.rows-1) doc.text(`v ${tileName(r+1,c)}`,x0+uw/2,y0+uh+10,{align:'center'});
+    scaleBar(x0,y0+uh+18);
+  }
+  return doc.output('arraybuffer');
+}
 function guidePDF(){
   const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'pt',format:'letter'});
   const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight(), ML=63, MR=63, MT=64, MB=60, TW=PW-ML-MR;
@@ -799,7 +883,7 @@ function guidePDF(){
   doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(17);
   doc.splitTextToSize(title,TW-40).forEach(line=>{doc.text(line,PW/2,y,{align:'center'});y+=26;});
   doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(110);
-  doc.text(plain(`${today} · ${fmtLen(S.W)} x ${fmtLen(S.H)} · ${S.passes} pass${S.passes>1?'es':''} of ${fmtLen(S.d)} rope · start at ${lab(LEGS[0].from)}`),ML,y); y+=22;
+  doc.text(plain(`${today} · ${fmtLen(S.W)} (W) x ${fmtLen(S.H)} (H) · ${S.passes} pass${S.passes>1?'es':''} of ${fmtLen(S.d)} rope · start at ${lab(LEGS[0].from)}`),ML,y); y+=22;
   // how-to paragraph with a bold "already down"
   const route=[LEGS[0].from,LEGS[0].to,LEGS[1].to].map(lab).join(' > ')+' > ... > '+lab(LEGS[0].from);
   const para = lead
@@ -843,7 +927,7 @@ function guideCSV(){
   const dual=v=>`${toIn(v).toFixed(2)} in / ${toCm(v).toFixed(1)} cm`;
   const rope=ropeCalc();
   const rows=[['Rope mat',`${S.top}x${S.side} bights`,`${S.passes} passes`],
-    ['Mat size',`${toIn(S.W).toFixed(2)} x ${toIn(S.H).toFixed(2)} in`,`${toCm(S.W).toFixed(1)} x ${toCm(S.H).toFixed(1)} cm`],
+    ['Mat size',`${toIn(S.W).toFixed(2)} in (W) x ${toIn(S.H).toFixed(2)} in (H)`,`${toCm(S.W).toFixed(1)} cm (W) x ${toCm(S.H).toFixed(1)} cm (H)`],
     ['Rope diameter',dual(S.d)],['Peg diameter',dual(S.peg)],
     ['Rope used',`${(toIn(rope)/12).toFixed(1)} ft`,`${(toCm(rope)/100).toFixed(2)} m`,'take-up %',S.takeup,'tails each',dual(S.tail)],[],
     ['Peg','X from mat left (in)','Y from mat top (in)','X from mat left (cm)','Y from mat top (cm)','X from mat left (mm)','Y from mat top (mm)']];
@@ -861,6 +945,7 @@ async function doExport(kind){
   if(kind==='svg'){filename=base+'.svg';data=wovenSVG();}
   else if(kind==='jig'){filename=base+'-jig.svg';data=jigSVG();}
   else if(kind==='csv'){filename=base+'-guide.csv';data=guideCSV();}
+  else if(kind==='jigpdf'){ if(!(window.jspdf&&window.jspdf.jsPDF)){toast('The PDF maker did not load. Check your connection and reload.');return;} filename=base+'-jig-template-tiled.pdf';data=jigPDF(); }
   else if(kind==='pdf'){ if(window.jspdf&&window.jspdf.jsPDF){filename=base+'-threading-guide.pdf';data=guidePDF();} else {filename=base+'-threading-guide.html';data=guideHTML();} }
   else { const {Wb,Hb}=boardDims(); const w=3200,h=Math.round(w*Hb/Wb); const c=document.createElement('canvas');c.width=w;c.height=h;
     render(c.getContext('2d'),w,h,{prog:1,sel:-1,exact:true,dpr:w/Math.max(1,cv.clientWidth)}); data=await new Promise(r=>c.toBlob(r,'image/png')); filename=base+'.png'; }
