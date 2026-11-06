@@ -111,6 +111,9 @@ table.out td.o,table.out td.u{font-weight:700;letter-spacing:.02em}
 table.out td.o{color:var(--over)} table.out td.u{color:var(--under)}
 table.out .sr{color:var(--muted)}
 .step .badge{margin-top:8px}
+.steps .sec{padding:10px 12px;background:var(--accent-soft);font-weight:700;font-size:13px;border-top:1px solid var(--line)}
+.steps .sec:first-child{border-top:0}
+.steps .sec small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
 .step:first-child{border-top:0}
 .step:hover{background:var(--accent-soft)}
 .step.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
@@ -189,7 +192,7 @@ details[open] summary{margin-bottom:6px}
       <label class="check"><input type="checkbox" id="texture" checked> Rope lay texture</label>
       <label class="check"><input type="checkbox" id="invert"> Flip over/under</label>
       <label class="check"><input type="checkbox" id="showHole" checked> Measured hole on the board</label>
-      <label class="check"><input type="checkbox" id="half" checked> Halfway marks</label>
+      <label class="check"><input type="checkbox" id="half" checked> Halfway mark</label>
       <label class="check"><input type="checkbox" id="passLayer"> Color each pass (first → last shade)</label>
       <div id="passOpts" hidden>
         <div class="swatches" style="margin-bottom:8px"><label class="check">First pass <input type="color" id="passA" value="#a9d8f7"></label><label class="check">Last pass <input type="color" id="passB" value="#0e2c63"></label><button class="chip" type="button" id="passReset">Blues</button></div>
@@ -241,7 +244,8 @@ details[open] summary{margin-bottom:6px}
       <div class="field"><label for="start">Start peg</label><select id="start"></select></div>
       <div class="field"><label for="dir">First leg</label><select id="dir"></select></div>
     </div>
-    <div class="field" style="margin-bottom:10px"><label for="guideMode">Show crossings for</label><select id="guideMode">
+    <label class="check" style="margin-bottom:10px"><input type="checkbox" id="midOut"> Start from the middle of the rope (both ends finish at the start peg)</label>
+    <div class="field" id="guideModeBox" style="margin-bottom:10px"><label for="guideMode">Show crossings for</label><select id="guideMode">
       <option value="lead">Pass 1, the lead (only strands already laid)</option><option value="follow">Passes 2 and up (every crossing)</option></select></div>
     <p class="hint" style="margin:0 0 10px">Work through the steps in order. Each step lists only the crossings with rope that is <b>already down</b> when you get there; the rest show up later, under the step that lays that rope.</p><span id="lgDot" hidden></span>
     <ol class="steps" id="steps"></ol>
@@ -394,7 +398,7 @@ const PRESETS=[
   {name:'Coaster 4×4 · 3×2',top:3,side:2,W:4,H:4,d:0.125,passes:2,units:'in'},
   {name:'Big rug 60×36 · 13×8',top:13,side:8,W:60,H:36,d:0.5,passes:3,units:'in'},
 ];
-const DEF={top:9,side:5,W:36,H:24,d:0.5,passes:3,peg:1,units:'in',k:0.96,rope:'manila',custom:'#c9a46a',bg:'pine',bgCustom:'#cfd6d9',guideMode:'lead',pegColor:'wood',pegCustom:'#ff5a1f',pegView:1,passA:'#a9d8f7',passB:'#0e2c63',jig:true,labels:true,texture:true,invert:false,half:true,passLayer:false,passSwap:false,showHole:true,takeup:8,tail:24,spare:10,start:'R1',dir:1,scheme:'sides',pegNames:{}};
+const DEF={top:9,side:5,W:36,H:24,d:0.5,passes:3,peg:1,units:'in',k:0.96,rope:'manila',custom:'#c9a46a',bg:'pine',bgCustom:'#cfd6d9',guideMode:'lead',midOut:false,pegColor:'wood',pegCustom:'#ff5a1f',pegView:1,passA:'#a9d8f7',passB:'#0e2c63',jig:true,labels:true,texture:true,invert:false,half:true,passLayer:false,passSwap:false,showHole:true,takeup:8,tail:24,spare:10,start:'R1',dir:1,scheme:'sides',pegNames:{}};
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('ropeMatDesigner')||'null'); if(s) S=Object.assign(S,s);}catch(e){}
 function save(){try{localStorage.setItem('ropeMatDesigner',JSON.stringify(S))}catch(e){}}
@@ -447,7 +451,8 @@ Object.entries(PEGC).forEach(([k,c])=>{const b=document.createElement('button');
 {const c=document.createElement('input');c.type='color';c.id='pegCustom';c.value=S.pegCustom;c.title='Custom peg color';c.setAttribute('aria-label','Custom peg color');
   c.oninput=()=>{S.pegCustom=c.value;S.pegColor='custom';syncInputs();save();draw();};$('pegSwatches').appendChild(c);}
 for(const k of ['passA','passB']){const c=$(k);c.value=S[k];c.oninput=()=>{S[k]=c.value;save();passKey();draw();};}
-$('guideMode').value=S.guideMode;
+$('guideMode').value=S.guideMode; $('midOut').checked=!!S.midOut;
+$('midOut').addEventListener('change',()=>{S.midOut=$('midOut').checked;save();selLeg=-1;legsUpdate();});
 $('guideMode').addEventListener('change',()=>{S.guideMode=$('guideMode').value;save();legsUpdate(true);});
 $('resetColors').onclick=()=>{for(const k of ['rope','custom','bg','bgCustom','pegColor','pegCustom','passA','passB'])S[k]=DEF[k];
   for(const [id,k] of [['custom','custom'],['bgCustom','bgCustom'],['pegCustom','pegCustom'],['passA','passA'],['passB','passB']]){const e=$(id);if(e)e.value=S[k];}
@@ -518,7 +523,8 @@ function holesCalc(){
    `<tr><td>Side length (rope edge to rope edge)</td><td>${L(H.a)}</td></tr>`+
    `<tr><td>Clear gap between parallel ropes</td><td>${L(H.gap)}</td></tr>`+
    `<tr><td>Open area per hole</td><td>${(+H.area.toFixed(S.units==='in'?2:1))} ${u}</td></tr>`+
-   `<tr><td>Corner angle (left/right corners)</td><td>${H.deg.toFixed(0)}°</td></tr>`+
+   `<tr><td>Corner angle, left & right corners</td><td>${H.deg.toFixed(1)}°</td></tr>`+
+   `<tr><td>Corner angle, top & bottom corners</td><td>${(180-H.deg).toFixed(1)}°</td></tr>`+
    (H.hi.a-H.lo.a>0.05*H.a?`<tr><td>Typical range of side length</td><td>${L(Math.max(0,H.lo.a))} – ${L(H.hi.a)}</td></tr>`:'');
   $('hlNote').textContent=(sq?'The holes are close to square, set on point like diamonds. ':`The holes are diamonds, ${H.w>H.h?'wider than tall':'taller than wide'}; they turn square when the corner angle is near 90°. `)+
    'Sizes are for the open interior holes, measured between rope surfaces as laid on the jig. Holes along the edges and inside the bights are smaller and irregular, and the mat will close up slightly once it is tightened off the jig.';
@@ -561,24 +567,75 @@ function ropeCalc(){
   $('rcTable').innerHTML=(S.passes<=6?per:`<tr><td>${S.passes} passes × ≈${f(path/S.passes)}</td><td>${f(path)}</td></tr>`)+
     `<tr><td>Over-under take-up +${Math.round(tu*100)}%</td><td>+${f(path*tu)}</td></tr><tr><td>Two tails</td><td>+${f(2*tail)}</td></tr>`+
     `<tr class="sum"><td>Rope used</td><td>${f(need)}</td></tr><tr><td>Spare +${Math.round(sp*100)}%</td><td>+${f(need*sp)}</td></tr><tr class="sum"><td>Buy at least</td><td>${f(buy)}</td></tr>`;
-  const HM=halfMarks(); const hmTxt=HM?` The halfway mark is ${halfTxt()} in: ${HM.atEnd?'the end of ':''}pass ${HM.passNo+1}, ${HM.atEnd?'back at the start peg':'leg '+(HM.legMid+1)}. Rope used to get there, counting one tail and half the spare: ${f(HM.usedMid)}.`:'';
+  const HM=halfMarks(); const hmTxt=HM?` The halfway mark is ${HM.atEnd?'at the end of ':'on '}pass ${HM.passNo+1}, ${HM.atEnd?'back at the start peg':'leg '+(HM.legMid+1)}. Rope used to get there, counting one tail and half the spare: ${f(HM.usedMid)}.`:'';
   $('rcNote').textContent=`Path lengths are measured along each pass's centerline, so inner passes come out a little shorter than outer ones. Take-up covers the rope rising over and dipping under at ${M.cross.length} crossings; thicker or stiffer rope needs more, about 6–10% is typical for ${S.passes>1?'multi-pass':'single'} mats.`+hmTxt;
   return need;
 }
 for(const k of ['takeup','tail','spare']) document.getElementById(k).addEventListener('input',()=>{const v=parseFloat(document.getElementById(k).value);S[k]=isFinite(v)?v:0;save();const r=ropeCalc();const el=document.querySelector('#stats span:last-child b');if(el)el.textContent=fmtRope(r);});
 function badge(k){ if(!S.half) return ''; const HM=halfMarks(); if(!HM) return ''; const b=[];
-  if(HM.legMid===k) b.push(`½ way · ${halfTxt()}, ${HM.atEnd?'end of':'on'} pass ${HM.passNo+1} · ${ropeFt(HM.usedMid)} used`);
+  if(HM.legMid===k) b.push(`½ way · ${HM.atEnd?'end of ':''}pass ${HM.passNo+1} · ${ropeFt(HM.usedMid)} used`);
   return b.length?`<span class="badge">${b.map(x=>`<span>${x}</span>`).join('')}</span>`:''; }
+let GSTEPS=[];
+function ddOf(s){const N=M.N,s0=LEGS[0].sFrom;let d=S.dir>0?s-s0:s0-s;return ((d%N)+N)%N;}
+function midDist(HM){ // path distance from the start peg of the middle leg to the middle point
+  const N=M.N,l=LEGS[HM.legMid]; let a=l.sFrom,b=HM.sMid;
+  if(S.dir>0){while(b<a)b+=N;while(b-a>N)b-=N;return arcBetween(M.cum,N,a,b);} while(b>a)b-=N;while(a-b>N)b+=N;return arcBetween(M.cum,N,b,a); }
+function legacySteps(){
+  return LEGS.map((l,k)=>{ const lead=S.guideMode!=='follow', arr=lead?l.lead:l.ou;
+    return {k,num:k+1,from:l.from,to:l.to,section:null,rows:stepRows(l).map(r=>({ou:r.ou,from:r.from,ref:`step ${r.step}`})),
+      hasX:l.ou.length>0,marks:l.items.map((it,i)=>({c:it.c,t:arr[i]})),hl:[Math.min(l.sFrom,l.sTo),Math.max(l.sFrom,l.sTo)],prog:legSpan(k)[1]/M.N,badge:badge(k)}; });
+}
+function midSteps(){
+  const HM=halfMarks(); if(!HM) return [];
+  const nL=LEGS.length,P=S.passes,pm=HM.passNo,km=HM.legMid,dMid=ddOf(HM.sMid),N=M.N;
+  const all=k=>LEGS[k].items.map((x,i)=>i);
+  const raw=[];
+  // Part A: from the middle back to the start peg (finishing on the first leg, reversed)
+  if(!HM.atEnd){ const it=LEGS[km].items;
+    raw.push({part:'A',p:pm,k:km,rev:true,idx:all(km).filter(i=>ddOf(it[i].v.s)<dMid).reverse(),from:'MID',to:LEGS[km].from});
+    for(let k=km-1;k>=0;k--) raw.push({part:'A',p:pm,k,rev:true,idx:all(k).reverse(),from:LEGS[k].to,to:LEGS[k].from}); }
+  else for(let k=nL-1;k>=0;k--) raw.push({part:'A',p:pm,k,rev:true,idx:all(k).reverse(),from:k===nL-1?'MID':LEGS[k].to,to:LEGS[k].from});
+  for(let p=pm-1;p>=0;p--) for(let k=nL-1;k>=0;k--) raw.push({part:'A',p,k,rev:true,idx:all(k).reverse(),from:LEGS[k].to,to:LEGS[k].from});
+  // Part B: from the middle forward to the start peg
+  if(!HM.atEnd){ const it=LEGS[km].items;
+    raw.push({part:'B',p:pm,k:km,rev:false,idx:all(km).filter(i=>ddOf(it[i].v.s)>=dMid),from:'MID',to:LEGS[km].to});
+    for(let k=km+1;k<nL;k++) raw.push({part:'B',p:pm,k,rev:false,idx:all(k),from:LEGS[k].from,to:LEGS[k].to}); }
+  for(let p=pm+1;p<P;p++) for(let k=0;k<nL;k++) raw.push({part:'B',p,k,rev:false,idx:all(k),from:(HM.atEnd&&p===pm+1&&k===0)?'MID':LEGS[k].from,to:LEGS[k].to});
+  // laying time of every strand-crossing
+  const key=(p,k,i)=>p*1e6+k*1e3+i, time=new Map(), stepOf=new Map(); let tc=0;
+  raw.forEach((st,si)=>st.idx.forEach(i=>{time.set(key(st.p,st.k,i),tc++);stepOf.set(key(st.p,st.k,i),si);}));
+  const vmap=new Map(); LEGS.forEach((l,k)=>l.items.forEach((it,i)=>vmap.set(it.v,[k,i])));
+  const nm=v=>v==='MID'?'Middle':lab(v);
+  const dist=midDist(HM), startTxt=`Start with the middle of the rope ${HM.atEnd?'at the start peg, between pass '+(pm+1)+' and pass '+(pm+2):`on pass ${pm+1}, ${fmtLen(dist)} past ${lab(LEGS[km].from)} along ${lab(LEGS[km].from)} → ${lab(LEGS[km].to)} (the red ½ flag)`}.`;
+  return raw.map((st,si)=>{
+    const l=LEGS[st.k], rows=[], marks=[];
+    st.idx.forEach(i=>{ const it=l.items[i], o=vmap.get(it.o); const tnow=time.get(key(st.p,st.k,i)); const down=[];
+      if(o) for(let q=0;q<P;q++){const tq=time.get(key(q,o[0],o[1])); if(tq!==undefined&&tq<tnow) down.push(q);}
+      if(!down.length){marks.push({c:it.c,t:'·'});return;}
+      const ou=it.v.over?'OVER':'UNDER'; marks.push({c:it.c,t:it.v.over?'O':'U'});
+      const s0=raw[stepOf.get(key(down[0],o[0],o[1]))]; const legName=`${nm(s0.from)}-${nm(s0.to)}`;
+      const steps=[...new Set(down.map(q=>stepOf.get(key(q,o[0],o[1]))+1))];
+      rows.push({ou,from:legName,np:down.length,ref:(P>1?`pass${down.length>1?'es':''} ${down.map(q=>q+1).join(' & ')}, `:'')+`step${steps.length>1?'s':''} ${steps.join(' & ')}`}); });
+    let a=l.sFrom,b=l.sTo; if(st.from==='MID'||st.to==='MID'){} let lo=Math.min(a,b),hi=Math.max(a,b);
+    if(st.from==='MID'&&!HM.atEnd){let m=HM.sMid;while(m<lo)m+=N;while(m>hi)m-=N; if(st.rev)hi=m; else lo=m;}
+    const first=(st.part==='A'&&si===0)||(st.part==='B'&&(si===0||raw[si-1].part==='A'));
+    return {k:st.k,num:si+1,from:st.from==='MID'?'MID':st.from,to:st.to,fromName:nm(st.from),toName:nm(st.to),pass:st.p,
+      section:first?(st.part==='A'?{t:`Part A · middle back to ${lab(LEGS[0].from)}`,s:`Lay this half first with one end. It finishes along ${lab(LEGS[0].to)} → ${lab(LEGS[0].from)}.`}:{t:`Part B · middle forward to ${lab(LEGS[0].from)}`,s:`Then lay this half with the other end, back to ${lab(LEGS[0].from)}.`}):null,
+      rows,hasX:st.idx.length>0,marks,hl:[lo,hi],prog:1,badge:(st.from==='MID')?`<span class="badge"><span>${esc(startTxt)}</span></span>`:''}; });
+}
+function buildGuide(){ GSTEPS=(S.midOut&&LEGS.length)?midSteps():legacySteps(); return GSTEPS; }
+function stepTitle(g){ const f=g.fromName||lab(g.from), t=g.toName||lab(g.to); return `Step ${g.num}: ${f} → ${t}`+(S.midOut&&S.passes>1?` · pass ${g.pass+1}`:''); }
+function emptyText(g){ return g.hasX?'Nothing laid down yet along this run — pull it straight, no over/under.':'No crossings on this run — pull it straight.'; }
 function stepRows(l){ // [{n, ou:'OVER'|'UNDER', from:'T7-B2', step:2}]
   const lead=S.guideMode!=='follow', arr=lead?l.lead:l.ou, rows=[];
   arr.forEach((x,i)=>{ if(x==='·') return; const o=LEGS[l.items[i].other];
     rows.push({ou:x==='O'?'OVER':'UNDER',from:o?`${lab(o.from)}-${lab(o.to)}`:'',step:o?l.items[i].other+1:''}); });
   return rows; }
-function stepBody(l,k){
-  const rows=stepRows(l), title=`Step ${k+1}: ${esc(lab(l.from))} → ${esc(lab(l.to))}`;
-  if(!rows.length) return `<div class="sh">${title}</div><p class="none">${l.ou.length?'Nothing laid down yet along this run — pull it straight, no over/under.':'No crossings on this run — pull it straight.'}</p>`;
+function stepBody(g){
+  const rows=g.rows, title=esc(stepTitle(g));
+  if(!rows.length) return `<div class="sh">${title}</div><p class="none">${emptyText(g)}</p>`;
   return `<div class="sh">${title}</div><table class="out"><thead><tr><th>Order</th><th>Over / Under</th><th>Crosses rope from</th></tr></thead><tbody>`+
-    rows.map((r,i)=>`<tr><td>${i+1}</td><td class="${r.ou==='OVER'?'o':'u'}">${r.ou}</td><td>${esc(r.from)} <span class="sr">(step ${r.step})</span></td></tr>`).join('')+'</tbody></table>'; }
+    rows.map((r,i)=>`<tr><td>${i+1}</td><td class="${r.ou==='OVER'?'o':'u'}">${r.ou}</td><td>${esc(r.from)} <span class="sr">(${esc(r.ref)})</span></td></tr>`).join('')+'</tbody></table>'; }
 function seqHTML(l){
   const lead=S.guideMode!=='follow', arr=lead?l.lead:l.ou;
   if(!arr.length) return '<em>no crossings</em>';
@@ -589,7 +646,8 @@ function seqHTML(l){
   const w=arr.filter(x=>x!=='·').length; return s+`<span class="cnt">${w?w+' to weave':'nothing to weave yet'}${arr.length-w?`, ${arr.length-w} open`:''}</span>`;
 }
 function guideHint(){ $('lgDot').hidden=S.guideMode==='follow';
-  $('guideHint').textContent=S.guideMode==='follow'
+  $('guideHint').textContent=S.midOut?'Lay Part A with one end of the rope, then Part B with the other. Each step lists only crossings with rope already down, including other passes, so "pass 1 & 3" means both of those strands are there. Click a step to see its crossings numbered on the board.'
+   : S.guideMode==='follow'
    ? 'Passes 2 and up run beside the lead, so every crossing already has rope under or over it. Follow the full O/U at each one, keeping to the same side of the lead all the way round.'
    : 'If a step has nothing listed, just pull it straight. Click a step to lay the rope up to that peg and see each crossing marked on the board.'; }
 function legsUpdate(keepSel){
@@ -598,8 +656,9 @@ function legsUpdate(keepSel){
   const nx=esc(lab(P[(i+1)%n].name)), pv=esc(lab(P[(i-1+n)%n].name));
   $('dir').innerHTML=`<option value="1"${S.dir===1?' selected':''}>toward ${nx}</option><option value="-1"${S.dir===-1?' selected':''}>toward ${pv}</option>`;
   LEGS=buildLegs(M,S.start,S.dir); save(); if(!keepSel) selLeg=-1; ropeCalc();
-  $('steps').innerHTML=LEGS.map((l,k)=>`<li class="step" tabindex="0" data-k="${k}">${stepBody(l,k)}${badge(k)}</li>`).join('');
-  $('steps').querySelectorAll('.step').forEach(li=>{const go=()=>{stop();selLeg=+li.dataset.k;const l=LEGS[selLeg];prog=legSpan(selLeg)[1]/M.N;if(prog>0.9999)prog=1;markSteps();draw();};
+  buildGuide(); $('guideModeBox').hidden=!!S.midOut;
+  $('steps').innerHTML=GSTEPS.map((g,j)=>(g.section?`<li class="sec">${esc(g.section.t)}<small>${esc(g.section.s)}</small></li>`:'')+`<li class="step" tabindex="0" data-k="${j}">${stepBody(g)}${g.badge}</li>`).join('');
+  $('steps').querySelectorAll('.step').forEach(li=>{const go=()=>{stop();selLeg=+li.dataset.k;const g=GSTEPS[selLeg];prog=g.prog;if(prog>0.9999)prog=1;markSteps();draw();};
     li.onclick=go; li.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});
   guideHint(); markSteps(); draw();
 }
@@ -673,11 +732,11 @@ function render(ctx,wpx,hpx,opt){
     ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fillRect(px-tw/2-5*opt.dpr,py-fs2*0.75,tw+10*opt.dpr,fs2*1.5);
     ctx.fillStyle='#1b272c'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,px,py); ctx.restore(); }}
   // selected leg highlight
-  if(opt.sel>=0&&LEGS[opt.sel]){const l=LEGS[opt.sel];ctx.save();ctx.globalAlpha=.38;ctx.strokeStyle=accent;ctx.lineWidth=M.bw*sc*1.25;ctx.lineCap='round';
-    tracePath(ctx,M.X,M.Y,Math.min(l.sFrom,l.sTo),Math.max(l.sFrom,l.sTo),N,T,false);ctx.stroke();ctx.restore();
-    const arr=S.guideMode==='follow'?l.ou:l.lead, rr=Math.max(8*opt.dpr,Math.min(14*opt.dpr,M.bw*sc*0.42));
+  if(opt.sel>=0&&GSTEPS[opt.sel]){const g=GSTEPS[opt.sel];ctx.save();ctx.globalAlpha=.38;ctx.strokeStyle=accent;ctx.lineWidth=M.bw*sc*1.25;ctx.lineCap='round';
+    tracePath(ctx,M.X,M.Y,g.hl[0],g.hl[1],N,T,false);ctx.stroke();ctx.restore();
+    const rr=Math.max(8*opt.dpr,Math.min(14*opt.dpr,M.bw*sc*0.42));
     ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`700 ${rr*1.15}px "IBM Plex Mono", ui-monospace, monospace`;
-    let ord=0; l.items.forEach((it,i)=>{const c=M.cross[it.c],x=T.x(c.x),y=T.y(c.y),t=arr[i];
+    let ord=0; g.marks.forEach(mk=>{const c=M.cross[mk.c],x=T.x(c.x),y=T.y(c.y),t=mk.t;
       ctx.fillStyle=t==='O'?'#1f5fbf':t==='U'?'#c0392b':'rgba(255,255,255,.92)';ctx.strokeStyle=t==='·'?'#5a6a70':'#fff';ctx.lineWidth=2*opt.dpr;
       ctx.beginPath();ctx.arc(x,y,rr,0,7);ctx.fill();ctx.stroke();ctx.fillStyle=t==='·'?'#5a6a70':'#fff';ctx.fillText(t==='·'?'–':String(++ord),x,y+rr*0.05);});
     ctx.restore();}
@@ -709,7 +768,7 @@ function render(ctx,wpx,hpx,opt){
       ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(tx-3*opt.dpr,ty-fs3*0.75,tw+6*opt.dpr,fs3*1.5);ctx.fillStyle='#1b272c';ctx.textAlign='left';ctx.fillText(txt,tx,ty);ctx.restore();};
     {const si=S.passSwap?S.passes-1-HM.passNo:HM.passNo, st=M.strands[si];
       const mx=T.x(ptAt(st.x,HM.sMid,N)),my=T.y(ptAt(st.y,HM.sMid,N));
-      flag(mx,my,`½ way · ${halfTxt()} · ${ropeFt(HM.usedMid)} used`,'#b4442f');}
+      flag(mx,my,`½ way · ${HM.atEnd?'end of ':''}pass ${HM.passNo+1} · ${ropeFt(HM.usedMid)} used`,'#b4442f');}
   }}
 }
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
@@ -774,13 +833,15 @@ function xName(l,i){const o=LEGS[l.items[i].other];return o?lab(o.from)+'-'+lab(
 function guideHTML(){
   const lead=S.guideMode!=='follow', today=new Date().toISOString().slice(0,10);
   const route=[LEGS[0].from].concat(LEGS.slice(0,2).map(l=>l.to)).map(lab).join('→')+'→…→'+lab(LEGS[0].from);
-  const title=`${S.top}×${S.side} Rope Mat – Over/Under Threading Guide (${lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`;
+  const title=`${S.top}×${S.side} Rope Mat – Over/Under Threading Guide (${S.midOut?'middle out, all passes':lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`;
   let b=`<h1>${esc(title)}</h1><div class="sub">${today} · ${esc(fmtLen(S.W))} (W) × ${esc(fmtLen(S.H))} (H) · ${S.passes} pass${S.passes>1?'es':''} of ${esc(fmtLen(S.d))} rope · start at ${esc(lab(LEGS[0].from))}</div>`;
   b+= lead? `<p>How to use this: work through the steps in order, 1 to ${LEGS.length} (${esc(route)}). Each step below only lists crossings with rope that is <b>already down</b> by the time you get there. If a step has no entries listed, just pull it straight — there's nothing there yet to weave through. (Crossings with rope that doesn't exist yet will show up later, listed under whichever future step lays that rope.)${S.passes>1?' This covers the first pass. For the following passes, print the "passes 2 and up" guide.':''}</p>`
           : `<p>How to use this: these passes run beside the lead, so every crossing already has rope there. Work through the steps in order, 1 to ${LEGS.length} (${esc(route)}), and follow every over/under listed, keeping to the same side of the lead the whole way round.</p>`;
-  LEGS.forEach((l,k)=>{ const rows=stepRows(l); b+=`<h2>Step ${k+1}: ${esc(lab(l.from))} → ${esc(lab(l.to))}</h2>`;
-    if(!rows.length){ b+=`<p class="none">${l.ou.length?'Nothing laid down yet along this run — pull it straight, no over/under.':'No crossings on this run — pull it straight.'}</p>`; return; }
-    b+='<table><tr><th>Order</th><th>Over / Under</th><th>Crosses rope from</th></tr>'+rows.map((r,i)=>`<tr><td>${i+1}</td><td class="${r.ou==='OVER'?'o':'u'}">${r.ou}</td><td>${esc(r.from)}&nbsp; (step ${r.step})</td></tr>`).join('')+'</table>'; });
+  if(S.midOut) b=b.replace(/<p>How to use this:[\s\S]*<\/p>$/,'')+`<p>How to use this: start with the middle of the rope at the red ½ mark. Lay <b>Part A</b> with one end, back to ${esc(lab(LEGS[0].from))}, then lay <b>Part B</b> with the other end. Each step lists only crossings with rope that is <b>already down</b>, including other passes. If a step has nothing listed, just pull it straight.</p>`;
+  buildGuide().forEach(g=>{ if(g.section) b+=`<h2 style="margin-top:34px;border-bottom:2px solid #333">${esc(g.section.t)}</h2><p>${esc(g.section.s)}</p>`;
+    b+=`<h2>${esc(stepTitle(g))}</h2>`; if(g.badge) b+=`<p><b>${esc(g.badge.replace(/<[^>]+>/g,''))}</b></p>`;
+    if(!g.rows.length){ b+=`<p class="none">${emptyText(g)}</p>`; return; }
+    b+='<table><tr><th>Order</th><th>Over / Under</th><th>Crosses rope from</th></tr>'+g.rows.map((r,i)=>`<tr><td>${i+1}</td><td class="${r.ou==='OVER'?'o':'u'}">${r.ou}</td><td>${esc(r.from)}&nbsp; (${esc(r.ref)})</td></tr>`).join('')+'</table>'; });
   const css=`body{font-family:Arial,Helvetica,sans-serif;color:#222;max-width:780px;margin:40px auto;padding:0 24px;line-height:1.45}
 h1{text-align:center;font-size:28px;margin:0 0 6px}.sub{color:#666;margin-bottom:16px}h2{font-size:18px;margin:26px 0 10px;page-break-after:avoid}
 p.none{color:#777;margin:0 0 0 4px}table{border-collapse:collapse;min-width:450px;page-break-inside:avoid}
@@ -878,7 +939,7 @@ function guidePDF(){
   const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight(), ML=63, MR=63, MT=64, MB=60, TW=PW-ML-MR;
   const lead=S.guideMode!=='follow', today=new Date().toISOString().slice(0,10);
   const plain=s=>String(s).replace(/×/g,'x');
-  const title=`${S.top}x${S.side} Rope Mat – Over/Under Threading Guide (${lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`.replace('–','-');
+  const title=`${S.top}x${S.side} Rope Mat – Over/Under Threading Guide (${S.midOut?'middle out, all passes':lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`.replace('–','-');
   let y=MT;
   doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(17);
   doc.splitTextToSize(title,TW-40).forEach(line=>{doc.text(line,PW/2,y,{align:'center'});y+=26;});
@@ -886,7 +947,9 @@ function guidePDF(){
   doc.text(plain(`${today} · ${fmtLen(S.W)} (W) x ${fmtLen(S.H)} (H) · ${S.passes} pass${S.passes>1?'es':''} of ${fmtLen(S.d)} rope · start at ${lab(LEGS[0].from)}`),ML,y); y+=22;
   // how-to paragraph with a bold "already down"
   const route=[LEGS[0].from,LEGS[0].to,LEGS[1].to].map(lab).join(' > ')+' > ... > '+lab(LEGS[0].from);
-  const para = lead
+  const para = S.midOut
+    ? `How to use this: start with the middle of the rope at the red half-way mark. Lay **Part A** with one end, working back to ${lab(LEGS[0].from)}, then lay **Part B** with the other end. Each step below only lists crossings with rope that is **already down** by the time you get there, including the other passes. If a step has no entries listed, just pull it straight.`
+    : lead
     ? `How to use this: work through the steps in order, 1 to ${LEGS.length} (${route}). Each step below only lists crossings with rope that is **already down** by the time you get there. If a step has no entries listed, just pull it straight — there's nothing there yet to weave through. (Crossings with rope that doesn't exist yet will show up later, listed under whichever future step lays that rope.)`+(S.passes>1?' This covers the first pass; export again with "Passes 2 and up" selected for the following passes.':'')
     : `How to use this: these passes run beside the lead, so every crossing already has rope there. Work through the steps in order, 1 to ${LEGS.length} (${route}), and follow every over/under listed, keeping to the same side of the lead the whole way round.`;
   doc.setTextColor(30); doc.setFontSize(10.5);
@@ -903,19 +966,23 @@ function guidePDF(){
     doc.setDrawColor(25); doc.setLineWidth(0.9); doc.line(xx,yy-4.5,xx+11,yy-4.5); doc.line(xx+11,yy-4.5,xx+7.5,yy-7); doc.line(xx+11,yy-4.5,xx+7.5,yy-2); xx+=16;
     doc.text(b,xx,yy); };
   const rowH=20.5;
-  LEGS.forEach((l,k)=>{
-    const rows=stepRows(l); const need=28+(rows.length?(rows.length+1)*rowH+10:22);
+  buildGuide().forEach(g=>{
+    const rows=g.rows; const startNote=g.badge?g.badge.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/→/g,'>'):'';
+    const need=28+(g.section?44:0)+(startNote?30:0)+(rows.length?(rows.length+1)*rowH+10:22);
     if(y+need>PH-MB){doc.addPage();y=MT;}
-    arrowText(`Step ${k+1}: ${lab(l.from)}`,lab(l.to),y); y+=14;
+    if(g.section){ doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(17);doc.text(g.section.t,ML,y+4);doc.setDrawColor(40);doc.setLineWidth(1.2);doc.line(ML,y+9,ML+TW,y+9);
+      doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(90);doc.text(g.section.s,ML,y+24);y+=44; }
+    arrowText(`Step ${g.num}: ${g.fromName||lab(g.from)}`,(g.toName||lab(g.to))+(S.midOut&&S.passes>1?`  ·  pass ${g.pass+1}`:''),y); y+=14;
+    if(startNote){ doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(176,48,42); doc.splitTextToSize(startNote,TW).forEach(t=>{doc.text(t,ML+3,y+6);y+=13;}); y+=6; }
     if(!rows.length){ doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(115);
-      doc.text(l.ou.length?'Nothing laid down yet along this run — pull it straight, no over/under.':'No crossings on this run — pull it straight.',ML+3,y+6); y+=30; return; }
-    doc.autoTable({startY:y,margin:{left:ML},tableWidth:300,theme:'grid',
+      doc.text(emptyText(g),ML+3,y+6); y+=30; return; }
+    doc.autoTable({startY:y,margin:{left:ML},tableWidth:S.midOut&&S.passes>1?360:300,theme:'grid',
       head:[['Order','Over / Under','Crosses rope from']],
-      body:rows.map((r,i)=>[String(i+1),r.ou,`${r.from}  (step ${r.step})`]),
+      body:rows.map((r,i)=>[String(i+1),r.ou,`${r.from}  (${r.ref})`]),
       styles:{font:'helvetica',fontSize:10,halign:'center',valign:'middle',cellPadding:{top:5,bottom:5,left:6,right:6},lineColor:[200,200,200],lineWidth:0.6,textColor:[25,25,25],minCellHeight:rowH},
       headStyles:{fillColor:[58,58,58],textColor:255,fontStyle:'bold',lineColor:[58,58,58]},
       alternateRowStyles:{fillColor:[242,242,242]}, bodyStyles:{fillColor:[255,255,255]},
-      columnStyles:{0:{cellWidth:45},1:{cellWidth:92},2:{cellWidth:163}},
+      columnStyles:{0:{cellWidth:45},1:{cellWidth:92},2:{cellWidth:S.midOut&&S.passes>1?223:163}},
       didParseCell:d=>{ if(d.section==='body'&&d.column.index===1){ d.cell.styles.fontStyle='bold'; d.cell.styles.textColor=d.cell.raw==='OVER'?[31,95,191]:[176,48,42]; } },
       rowPageBreak:'avoid'});
     y=doc.lastAutoTable.finalY+26;
