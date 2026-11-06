@@ -92,6 +92,14 @@ canvas{display:block;width:100%;height:auto}
 .passkey i{width:22px;height:10px;border-radius:5px;display:inline-block;border:1px solid var(--line)}
 .badge{font-size:11.5px;font-weight:600;color:var(--accent);display:flex;gap:8px;flex-wrap:wrap}
 .badge span{background:var(--accent-soft);border-radius:999px;padding:1px 8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.segb{font:inherit;font-size:13px;font-weight:600;padding:8px 6px;border:0;background:var(--bg);color:var(--ink);cursor:pointer}
+.segb+.segb,.segs+.segs{border-left:1px solid var(--line)}
+.segs{font:inherit;font-size:12.5px;font-weight:600;padding:7px 6px;border:0;background:var(--bg);color:var(--ink);cursor:pointer}
+.segs[aria-pressed=true]{background:var(--accent-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+body.ros.simple .k-field{display:none}
+.segb[aria-pressed=true]{background:var(--accent);color:var(--panel)}
+body.ros .rect-only{display:none!important} body:not(.ros) .ros-only{display:none!important}
 .exports{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--line);align-items:center}
 .exports .exp-row{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px}
 .exports .note{color:var(--muted);font-size:12.5px;flex-basis:100%}
@@ -139,38 +147,49 @@ details[open] summary{margin-bottom:6px}
 
 .foot{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-top:22px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
 .foot p{margin:0;max-width:70ch}
-.tip{display:inline-flex;align-items:center;gap:8px;background:#ffd23f;color:#1b1b1b;font-weight:600;font-size:14px;padding:9px 16px;border-radius:999px;text-decoration:none;border:1px solid rgba(0,0,0,.15)}
-.tip:hover{filter:brightness(.96)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <div class="wrap">
 <header>
   <h1>Rope Mat Designer</h1>
-  <p>Rectangular mat template: the rope runs a Lissajous path, x = cos(side·t), y = sin(top·t), bouncing between pegs on a jig. Set the bights and size, then follow the peg-to-peg threading guide.</p>
+  <p id="lede">Rectangular mat template: the rope runs a Lissajous path, x = cos(side·t), y = sin(top·t), bouncing between pegs on a jig. Set the bights and size, then follow the peg-to-peg threading guide.</p>
 </header>
 <div class="grid">
   <aside class="panel" aria-label="Mat settings">
+    <div class="sec">
+      <div class="lbl">Design</div>
+      <div class="seg" role="group" aria-label="Design type"><button type="button" class="segb" data-shape="rect">Rectangular mat</button><button type="button" class="segb" data-shape="rosette">Turk's head rosette</button></div>
+      <div class="seg ros-only" role="group" aria-label="Rosette style"><button type="button" class="segs" data-rstyle="simple">Simple (round loops)</button><button type="button" class="segs" data-rstyle="classic">Classic (shaped bights)</button></div>
+    </div>
     <div class="sec">
       <div class="lbl">Presets</div>
       <div class="presets" id="presets"></div>
     </div>
     <div class="sec">
       <div class="lbl">Bights</div>
-      <div class="row">
+      <div class="row ros-only">
+        <div class="field"><label for="B">Bights (around the edge)</label>
+          <div class="stepper"><button type="button" data-step="B" data-d="-1" aria-label="Fewer bights">−</button><input id="B" type="number" min="2" max="40" value="7"><button type="button" data-step="B" data-d="1" aria-label="More bights">+</button></div></div>
+        <div class="field"><label for="Ld">Leads (times round)</label>
+          <div class="stepper"><button type="button" data-step="Ld" data-d="-1" aria-label="Fewer leads">−</button><input id="Ld" type="number" min="2" max="20" value="4"><button type="button" data-step="Ld" data-d="1" aria-label="More leads">+</button></div></div>
+      </div>
+      <div class="row rect-only">
         <div class="field"><label for="top">Top &amp; bottom</label>
           <div class="stepper"><button type="button" data-step="top" data-d="-1" aria-label="Fewer top bights">−</button><input id="top" type="number" min="1" max="30" value="9"><button type="button" data-step="top" data-d="1" aria-label="More top bights">+</button></div></div>
         <div class="field"><label for="side">Each end</label>
           <div class="stepper"><button type="button" data-step="side" data-d="-1" aria-label="Fewer end bights">−</button><input id="side" type="number" min="1" max="30" value="5"><button type="button" data-step="side" data-d="1" aria-label="More end bights">+</button></div></div>
       </div>
-      <div class="field"><label for="k">Bight shape <span class="mono" id="kval"></span></label>
+      <div class="field k-field"><label for="k">Bight shape <span class="mono" id="kval"></span></label>
         <input id="k" type="range" min="0" max="0.995" step="0.005" value="0.96"></div>
     </div>
     <div class="sec">
       <div class="lbl">Size &amp; rope</div>
       <div class="row">
-        <div class="field"><label for="W">Width</label><input id="W" type="number" step="0.5" min="2" value="36"></div>
-        <div class="field"><label for="H">Height</label><input id="H" type="number" step="0.5" min="2" value="24"></div>
+        <div class="field rect-only"><label for="W">Width</label><input id="W" type="number" step="0.5" min="2" value="36"></div>
+        <div class="field rect-only"><label for="H">Height</label><input id="H" type="number" step="0.5" min="2" value="24"></div>
+        <div class="field ros-only"><label for="D">Outer diameter</label><input id="D" type="number" step="0.5" min="2" value="24"></div>
+        <div class="field ros-only"><label for="Dh">Center hole</label><input id="Dh" type="number" step="0.25" min="0.5" value="6"></div>
         <div class="field"><label for="d">Rope dia.</label><input id="d" type="number" step="0.0625" min="0.05" value="0.5"></div>
         <div class="field"><label for="passes">Passes</label><div class="stepper"><button type="button" data-step="passes" data-d="-1" aria-label="Fewer passes">−</button><input id="passes" type="number" min="1" max="12" value="3"><button type="button" data-step="passes" data-d="1" aria-label="More passes">+</button></div></div>
         <div class="field"><label for="peg">Peg dia.</label><input id="peg" type="number" step="0.125" min="0.1" value="1"></div>
@@ -254,7 +273,6 @@ details[open] summary{margin-bottom:6px}
 </div>
 <footer class="foot">
   <p>The mat path uses the Lissajous approach described by Nils Kristian Rossing in <i>How to Make Rope Mats and Rosettes</i>. Free to use for your own mats.</p>
-  <a class="tip" id="tip" href="#" target="_blank" rel="noopener" hidden>Like this tool? Buy me a round (or 2)</a>
 </footer>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -279,6 +297,22 @@ function buildMat(o){
   const N=Math.max(3000, Math.min(36000, 380*(p+q)));
   const X=new Float64Array(N), Y=new Float64Array(N);
   for(let i=0;i<N;i++){const t=TAU*i/N; X[i]=ax*fx(t); Y[i]=ay*fy(t);}
+  // pegs at bight apexes
+  const pegs=[]; const inset=bw/2+o.peg/2;
+  const apex=(freq,cosLike)=>{const r=[];for(let k=0;k<2*freq;k++){const t=cosLike?k*Math.PI/freq:(Math.PI/2+k*Math.PI)/freq;r.push({t,sign:(k%2===0)?1:-1});}return r;};
+  const xCos=!swap, yCos=swap;
+  apex(p,xCos).forEach(a=>{const s=a.t/TAU*N;const y=ay*fy(a.t);pegs.push({side:a.sign>0?'R':'L',s,ax:a.sign*ax,ay:y,x:a.sign*(ax-inset),y});});
+  apex(q,yCos).forEach(a=>{const s=a.t/TAU*N;const x=ax*fx(a.t);pegs.push({side:a.sign>0?'T':'B',s,ax:x,ay:a.sign*ay,x,y:a.sign*(ay-inset)});});
+  for(const side of ['T','B','L','R']){
+    const g2=pegs.filter(e=>e.side===side);
+    if(side==='T'||side==='B') g2.sort((a,b)=>a.x-b.x); else g2.sort((a,b)=>b.y-a.y);
+    g2.forEach((e,i)=>e.name=side+(i+1));
+  }
+  pegs.sort((a,b)=>a.s-b.s);
+  const P=finishPath(X,Y,N,o,bw);
+  return Object.assign(P,{p,q,pegs,ax,ay,expected:Math.max(0,2*p*q-p-q),o});
+}
+function finishPath(X,Y,N,o,bw){
   const cum=new Float64Array(N+1);
   for(let i=0;i<N;i++){const j=(i+1)%N; cum[i+1]=cum[i]+Math.hypot(X[j]-X[i],Y[j]-Y[i]);}
   const total=cum[N], avg=total/N;
@@ -327,18 +361,6 @@ function buildMat(o){
   const strandLens=strands.map(st=>{let L=0;for(let i=0;i<N;i++){const j=(i+1)%N;L+=Math.hypot(st.x[j]-st.x[i],st.y[j]-st.y[i]);}return L;});
   let conflicts=0; const byC=cross.map(()=>[]);
   visits.forEach(v=>byC[v.c].push(v)); byC.forEach(a=>{if(a.length!==2||a[0].over===a[1].over)conflicts++;});
-  // pegs at bight apexes
-  const pegs=[]; const inset=bw/2+o.peg/2;
-  const apex=(freq,cosLike)=>{const r=[];for(let k=0;k<2*freq;k++){const t=cosLike?k*Math.PI/freq:(Math.PI/2+k*Math.PI)/freq;r.push({t,sign:(k%2===0)?1:-1});}return r;};
-  const xCos=!swap, yCos=swap;
-  apex(p,xCos).forEach(a=>{const s=a.t/TAU*N;const y=ay*fy(a.t);pegs.push({side:a.sign>0?'R':'L',s,ax:a.sign*ax,ay:y,x:a.sign*(ax-inset),y});});
-  apex(q,yCos).forEach(a=>{const s=a.t/TAU*N;const x=ax*fx(a.t);pegs.push({side:a.sign>0?'T':'B',s,ax:x,ay:a.sign*ay,x,y:a.sign*(ay-inset)});});
-  for(const side of ['T','B','L','R']){
-    const g2=pegs.filter(e=>e.side===side);
-    if(side==='T'||side==='B') g2.sort((a,b)=>a.x-b.x); else g2.sort((a,b)=>b.y-a.y);
-    g2.forEach((e,i)=>e.name=side+(i+1));
-  }
-  pegs.sort((a,b)=>a.s-b.s);
   // density / clearance
   const gaps=[]; for(let i=0;i<visits.length;i++){const a=visits[i],b=visits[(i+1)%visits.length];
     const sa=a.s, sb=(i+1<visits.length)?b.s:b.s+N; gaps.push(arcBetween(cum,N,sa,sb));}
@@ -350,7 +372,34 @@ function buildMat(o){
   // interior gap spread (middle 80%) for a size range
   const gLo=gaps.length?gaps[Math.floor(gaps.length*0.2)]:medGap, gHi=gaps.length?gaps[Math.floor(gaps.length*0.8)]:medGap;
   let cc=null,cd=Infinity; for(const c of cross){const dd=Math.hypot(c.x,c.y);if(dd<cd){cd=dd;cc=c;}}
-  return {medGap,medAlpha,gLo,gHi,centerCross:cc,p,q,N,X,Y,cum,total,strands,strandLens,cross,visits,pegs,conflicts,bw,ax,ay,clearance,expected:Math.max(0,2*p*q-p-q),o};
+  return {medGap,medAlpha,gLo,gHi,centerCross:cc,N,X,Y,cum,total,strands,strandLens,cross,visits,conflicts,bw,clearance};
+}
+function buildRosette(o){
+  // o: {B (bights), L (leads), D (outer dia), Dh (hole dia), d, passes, k, peg, invert}
+  const B=o.B, Ld=o.L, TAU=Math.PI*2, g=gcd(B,Ld);
+  if(g!==1) return {error:'gcd',g};
+  if(Ld<2) return {error:'leads'};
+  const bw=o.d*o.passes, rOut=o.D/2-bw/2, rIn=o.Dh/2+bw/2;
+  if(rIn<=0||rOut-rIn<bw*1.5) return {error:'small'};
+  if(TAU*rIn<B*bw*1.15) return {error:'hole'};
+  const Rm=(rOut+rIn)/2, Ra=(rOut-rIn)/2;
+  const N=Math.max(4000,Math.min(40000,420*(B+Ld*3)));
+  const X=new Float64Array(N), Y=new Float64Array(N);
+  // simple style: epitrochoid z = e^{-iLu} + c e^{i(B-L)u}, rotated so an outer bight is at the top (round, oval loops)
+  const c=(rOut-rIn)/(rOut+rIn), sc0=rOut/(1+c);
+  const simplePt=u=>{const a=-Ld*u, b=(B-Ld)*u; const x=Math.cos(a)+c*Math.cos(b), y=Math.sin(a)+c*Math.sin(b); return [-y*sc0, x*sc0];};
+  for(let i=0;i<N;i++){const u=TAU*i/N;
+    if(o.style==='simple'){const [x,y]=simplePt(u); X[i]=x; Y[i]=y;}
+    else {const th=Math.PI/2-Ld*u, r=Rm+Ra*wave(B*u+Math.PI/2,o.k); X[i]=r*Math.cos(th); Y[i]=r*Math.sin(th);} }
+  const pegs=[], inO=rOut-bw/2-o.peg/2, inI=o.style==='simple'?Math.max(o.peg*0.6,rIn-bw/2-o.peg/2):rIn+bw/2+o.peg/2;
+  for(let m=0;m<2*B;m++){const u=m*Math.PI/B, outer=m%2===0, th=o.style==='simple'?(()=>{const [x,y]=simplePt(u);return Math.atan2(y,x);})():Math.PI/2-Ld*u, rr=outer?inO:inI, ra=outer?rOut:rIn;
+    pegs.push({side:outer?'O':'I',s:u/TAU*N,x:rr*Math.cos(th),y:rr*Math.sin(th),th,ar:ra});}
+  for(const side of ['O','I']){ const g2=pegs.filter(e=>e.side===side);
+    const ang=e=>{let a=Math.PI/2-e.th; a=((a%TAU)+TAU)%TAU; return a;};
+    g2.sort((a,b)=>ang(a)-ang(b)); g2.forEach((e,i)=>e.name=side+(i+1)); }
+  pegs.sort((a,b)=>a.s-b.s);
+  const P=finishPath(X,Y,N,o,bw);
+  return Object.assign(P,{p:Ld,q:B,pegs,ax:o.D/2,ay:o.D/2,rOut,rIn,rosette:true,expected:B*(Ld-1),o});
 }
 function arcBetween(cum,N,sa,sb){ // sa<=sb, may exceed N
   const at=s=>{const k=Math.floor(s/N);let r=s-k*N;const i=Math.floor(r),f=r-i;return k*cum[N]+cum[i]+(cum[Math.min(i+1,N)]-cum[i])*f;};
@@ -382,6 +431,12 @@ const $=id=>document.getElementById(id);
 const cv=$('cv');
 const ROPES={manila:['#dbb46b','#6e4b1d'],jute:['#b88a4d','#553915'],cotton:['#f0ebdf','#8a8475'],navy:['#33507a','#111c2b'],red:['#b4442f','#4c1911'],sage:['#8ea889','#3a4b37']};
 const BOARDS={pine:'#d6bc8f',birch:'#ecdcc0',ply:'#c9a77a',walnut:'#6b4a32',white:'#f6f5f1',grey:'#9aa3a7',slate:'#3b4449',black:'#1d2124'};
+function isRos(){return S.shape==='rosette';}
+function MW(){return isRos()?S.D:S.W;} function MH(){return isRos()?S.D:S.H;}
+function designTag(){return isRos()?`${S.B}Bx${S.Ld}L`:`${S.top}x${S.side}`;}
+function designName(x){return isRos()?`${S.B} bight ${S.Ld} lead Turk's Head Rosette${S.rStyle==='simple'?' (simple)':''}`:`${S.top}${x||'x'}${S.side} Rope Mat`;}
+function sizeTxt(x){return isRos()?`${fmtLen(S.D)} across, ${fmtLen(S.Dh)} center hole`:`${fmtLen(S.W)} (W) ${x||'×'} ${fmtLen(S.H)} (H)`;}
+function pegOrder(s){return 'TRBLOI'.indexOf(s[0])*1000+parseInt(s.slice(1));}
 function bgColor(){return S.bg==='custom'?S.bgCustom:(BOARDS[S.bg]||BOARDS.pine);}
 function pegShowDia(){ // screen-only: small pegs drawn a bit bigger, large pegs a bit smaller; exports use the true size
   const ref=S.units==='in'?0.5:1.27; return Math.pow(S.peg,0.6)*Math.pow(ref,0.4)*(+S.pegView||1); }
@@ -398,7 +453,7 @@ const PRESETS=[
   {name:'Coaster 4×4 · 3×2',top:3,side:2,W:4,H:4,d:0.125,passes:2,units:'in'},
   {name:'Big rug 60×36 · 13×8',top:13,side:8,W:60,H:36,d:0.5,passes:3,units:'in'},
 ];
-const DEF={top:9,side:5,W:36,H:24,d:0.5,passes:3,peg:1,units:'in',k:0.96,rope:'manila',custom:'#c9a46a',bg:'pine',bgCustom:'#cfd6d9',guideMode:'lead',midOut:false,pegColor:'wood',pegCustom:'#ff5a1f',pegView:1,passA:'#a9d8f7',passB:'#0e2c63',jig:true,labels:true,texture:true,invert:false,half:true,passLayer:false,passSwap:false,showHole:true,takeup:8,tail:24,spare:10,start:'R1',dir:1,scheme:'sides',pegNames:{}};
+const DEF={shape:'rect',rStyle:'simple',B:7,Ld:4,D:24,Dh:6,top:9,side:5,W:36,H:24,d:0.5,passes:3,peg:1,units:'in',k:0.96,rope:'manila',custom:'#c9a46a',bg:'pine',bgCustom:'#cfd6d9',guideMode:'lead',midOut:false,pegColor:'wood',pegCustom:'#ff5a1f',pegView:1,passA:'#a9d8f7',passB:'#0e2c63',jig:true,labels:true,texture:true,invert:false,half:true,passLayer:false,passSwap:false,showHole:true,takeup:8,tail:24,spare:10,start:'R1',dir:1,scheme:'sides',pegNames:{}};
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('ropeMatDesigner')||'null'); if(s) S=Object.assign(S,s);}catch(e){}
 function save(){try{localStorage.setItem('ropeMatDesigner',JSON.stringify(S))}catch(e){}}
@@ -420,7 +475,7 @@ function buildNames(){ return; if(!M||M.error){return;}
   $('names').querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{const v=inp.value.trim(); if(v)S.pegNames[inp.dataset.peg]=v; else delete S.pegNames[inp.dataset.peg]; save(); relabel();}));
 }
 function relabel(){ legsUpdate(true); fillStart(); }
-function fillStart(){ if(!M||M.error) return; const order=s=>'TRBL'.indexOf(s[0])*100+parseInt(s.slice(1));
+function fillStart(){ if(!M||M.error) return; const order=pegOrder;
   $('start').innerHTML=M.pegs.map(e=>e.name).sort((a,b)=>order(a)-order(b)).map(n=>`<option value="${n}"${n===S.start?' selected':''}>${esc(lab(n))}</option>`).join(''); }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 let M=null, LEGS=[], prog=1, selLeg=-1, playing=false, dl=null;
@@ -431,7 +486,7 @@ function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout
 
 /* controls */
 function syncInputs(){
-  for(const k of ['top','side','W','H','d','passes','peg','takeup','tail','spare']) $(k).value=S[k];
+  for(const k of ['top','side','W','H','d','passes','peg','takeup','tail','spare','B','Ld','D','Dh']) $(k).value=S[k];
   $('pegView').value=S.pegView; pegViewLabel();
   $('units').value=S.units; $('k').value=S.k; $('kval').textContent=S.k<0.3?'· curved':S.k>0.985?'· sharp':'· rounded';
   for(const k of ['jig','labels','texture','invert','showHole','half','passLayer','passSwap']) $(k).checked=S[k];
@@ -442,8 +497,16 @@ function syncInputs(){
   $('d').previousElementSibling.textContent='Rope dia. ('+u+')'; $('peg').previousElementSibling.textContent='Peg dia. ('+u+')';
   $('d').step=S.units==='in'?0.0625:0.1; $('peg').step=S.units==='in'?0.125:0.25; $('W').step=$('H').step=S.units==='in'?0.5:1;
 }
-PRESETS.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p.name;
-  b.onclick=()=>{Object.assign(S,p);S.peg=p.units==='in'?(p.d<=0.2?0.25:1):2.5;S.start='R1';S.dir=1;rebuild();};$('presets').appendChild(b);});
+const ROS_PRESETS=[
+  {name:'Round rug 24 in · 7B×4L',B:7,Ld:4,D:24,Dh:6,d:0.5,passes:3,units:'in'},
+  {name:'Round rug 36 in · 11B×6L',B:11,Ld:6,D:36,Dh:9,d:0.5,passes:3,units:'in'},
+  {name:'Trivet 9 in · 5B×3L',B:5,Ld:3,D:9,Dh:2.5,d:0.25,passes:3,units:'in'},
+  {name:'Coaster 4 in · 5B×4L',B:5,Ld:4,D:4,Dh:1,d:0.125,passes:2,units:'in'},
+];
+function buildPresets(){ const box=$('presets'); box.innerHTML='';
+  (isRos()?ROS_PRESETS:PRESETS).forEach(p=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p.name;
+    b.onclick=()=>{Object.assign(S,p);S.peg=p.units==='in'?(p.d<=0.2?0.25:1):2.5;S.start=isRos()?'O1':'R1';S.dir=1;rebuild();};box.appendChild(b);}); }
+buildPresets();
 Object.entries(ROPES).forEach(([k,c])=>{const b=document.createElement('button');b.type='button';b.className='sw';b.dataset.rope=k;b.style.background=c[0];b.title=k;b.setAttribute('aria-label',k+' rope');
   b.onclick=()=>{S.rope=k;syncInputs();save();draw();};$('swatches').appendChild(b);});
 Object.entries(PEGC).forEach(([k,c])=>{const b=document.createElement('button');b.type='button';b.className='sw pegsw';b.dataset.peg=k;b.style.background=c;b.title=k;b.setAttribute('aria-label',k+' pegs');
@@ -464,11 +527,13 @@ Object.entries(BOARDS).forEach(([k,c])=>{const b=document.createElement('button'
   c.oninput=()=>{S.bgCustom=c.value;S.bg='custom';syncInputs();save();draw();};$('bgSwatches').appendChild(c);}
 {const c=document.createElement('input');c.type='color';c.id='custom';c.value=S.custom;c.title='Custom color';c.setAttribute('aria-label','Custom rope color');
   c.oninput=()=>{S.custom=c.value;S.rope='custom';syncInputs();save();draw();};$('swatches').appendChild(c);}
-document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{const k=b.dataset.step;S[k]=Math.max(1,Math.min(k==='passes'?12:30,(+S[k])+(+b.dataset.d)));rebuild();});
+document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{const k=b.dataset.step;S[k]=Math.max(k==='B'||k==='Ld'?2:1,Math.min(k==='passes'?12:k==='B'?40:30,(+S[k])+(+b.dataset.d)));rebuild();});
 $('pegView').addEventListener('input',()=>{S.pegView=+$('pegView').value;pegViewLabel();save();draw();});
-for(const k of ['top','side','W','H','d','passes','peg']) $(k).addEventListener('change',()=>{const v=parseFloat($(k).value);if(isFinite(v)&&v>0){S[k]=(k==='top'||k==='side'||k==='passes')?Math.round(v):v;}rebuild();});
+for(const k of ['top','side','W','H','d','passes','peg','B','Ld','D','Dh']) $(k).addEventListener('change',()=>{const v=parseFloat($(k).value);if(isFinite(v)&&v>0){S[k]=(['top','side','passes','B','Ld'].includes(k))?Math.round(v):v;}rebuild();});
+document.querySelectorAll('.segs').forEach(b=>b.onclick=()=>{if(S.rStyle===b.dataset.rstyle)return;S.rStyle=b.dataset.rstyle;selLeg=-1;stop();prog=1;rebuild();});
+document.querySelectorAll('.segb').forEach(b=>b.onclick=()=>{if(S.shape===b.dataset.shape)return;S.shape=b.dataset.shape;if(S.shape==='rosette')S.rStyle='simple';selLeg=-1;stop();prog=1;buildPresets();rebuild();});
 $('k').addEventListener('input',()=>{S.k=+$('k').value;rebuild();});
-$('units').addEventListener('change',()=>{const nu=$('units').value;if(nu!==S.units){const f=nu==='cm'?2.54:1/2.54;for(const k of ['W','H','d','peg','tail'])S[k]=+(S[k]*f).toFixed(3);S.units=nu;}rebuild();});
+$('units').addEventListener('change',()=>{const nu=$('units').value;if(nu!==S.units){const f=nu==='cm'?2.54:1/2.54;for(const k of ['W','H','d','peg','tail','D','Dh'])S[k]=+(S[k]*f).toFixed(3);S.units=nu;}rebuild();});
 for(const k of ['jig','labels','texture','showHole','half','passLayer','passSwap']) $(k).addEventListener('change',()=>{S[k]=$(k).checked;save();if(k==='passLayer')$('passOpts').hidden=!S.passLayer;passKey();if(k==='half'||k==='passSwap')legsUpdate(true);else draw();});
 $('invert').addEventListener('change',()=>{S.invert=$('invert').checked;rebuild();});
 cv.addEventListener('click',ev=>{ return; const r=cv.getBoundingClientRect(); const {Wb,Hb}=boardDims();
@@ -486,20 +551,27 @@ function stop(){playing=false;$('play').textContent='Lay rope';}
 
 function rebuild(){
   syncInputs(); passKey(); save();
-  M=buildMat({top:S.top,side:S.side,W:S.W,H:S.H,d:S.d,passes:S.passes,k:S.k,peg:S.peg,invert:S.invert});
+  document.body.classList.toggle('ros',isRos()); document.querySelectorAll('.segb').forEach(b=>b.setAttribute('aria-pressed',b.dataset.shape===S.shape));
+  $('lede').textContent=isRos()?(S.rStyle==='simple'?"Turk's head rosette, simple style: round, oval loops like the classic Knot Jigs template. ":'')+"Turk's head rosette: the rope circles the center once per lead while swinging between an inner and outer ring of pegs, once per bight. Set the bights, leads and size, then follow the peg-to-peg threading guide.":'Rectangular mat template: the rope runs a Lissajous path, x = cos(side·t), y = sin(top·t), bouncing between pegs on a jig. Set the bights and size, then follow the peg-to-peg threading guide.';
+  document.body.classList.toggle('simple',isRos()&&S.rStyle==='simple'); document.querySelectorAll('.segs').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rstyle===S.rStyle));
+  M=isRos()?buildRosette({style:S.rStyle,B:S.B,L:S.Ld,D:S.D,Dh:S.Dh,d:S.d,passes:S.passes,k:S.k,peg:S.peg,invert:S.invert}):buildMat({top:S.top,side:S.side,W:S.W,H:S.H,d:S.d,passes:S.passes,k:S.k,peg:S.peg,invert:S.invert});
   const msg=$('msg');
   if(M.error){
     msg.hidden=false;
-    if(M.error==='gcd'){ const alt=[S.side-1,S.side+1].filter(v=>v>=1&&gcd(v,S.top)===1); const alt2=[S.top-1,S.top+1].filter(v=>v>=1&&gcd(v,S.side)===1);
+    if(M.error==='gcd'&&isRos()){ const alt=[S.Ld-1,S.Ld+1].filter(v=>v>=2&&gcd(v,S.B)===1),alt2=[S.B-1,S.B+1].filter(v=>v>=2&&gcd(v,S.Ld)===1);
+      $('msgText').textContent=`${S.B} bights and ${S.Ld} leads share a factor of ${M.g}, so the rope would close into ${M.g} separate loops. Try ${alt.map(v=>S.B+' bights × '+v+' leads').concat(alt2.map(v=>v+' bights × '+S.Ld+' leads')).join(' or ')}.`;}
+    else if(M.error==='leads') $('msgText').textContent='A Turk\'s head rosette needs at least 2 leads.';
+    else if(M.error==='hole') $('msgText').textContent='The center hole is too small for this many bights at this rope size. Make the hole bigger, or use fewer bights, fewer passes or thinner rope.';
+    else if(M.error==='gcd'){ const alt=[S.side-1,S.side+1].filter(v=>v>=1&&gcd(v,S.top)===1); const alt2=[S.top-1,S.top+1].filter(v=>v>=1&&gcd(v,S.side)===1);
       $('msgText').textContent=`${S.top} × ${S.side} bights share a factor of ${M.g}, so the rope would close into ${M.g} separate loops instead of one mat. Try ${alt.map(v=>S.top+' × '+v).concat(alt2.map(v=>v+' × '+S.side)).join(' or ')}.`;}
     else $('msgText').textContent='The rope bundle is too wide for this mat size. Use a bigger mat, thinner rope or fewer passes.';
     $('stats').innerHTML='';$('fit').hidden=true;$('steps').innerHTML='';$('start').innerHTML='';$('dir').innerHTML='';LEGS=[];draw();return;
   }
   msg.hidden=true; $('fit').hidden=false;
-  const names=M.pegs.map(e=>e.name); if(!names.includes(S.start)) S.start=names.includes('R1')?'R1':names[0];
+  const names=M.pegs.map(e=>e.name); if(!names.includes(S.start)) S.start=names.includes('R1')?'R1':names.includes('O1')?'O1':names[0];
   fillStart(); buildNames();
   const rope=ropeCalc(); holesCalc();
-  $('stats').innerHTML=[['Mat',`${fmtLen(S.W)} (W) × ${fmtLen(S.H)} (H)`],['Bights',`${S.top} × ${S.side}`],['Pegs',M.pegs.length],['Crossings',M.cross.length],['Holes ≈',(()=>{const H=holeGeom();return H&&H.gap>0?`${fmtLen(H.w)} (W) × ${fmtLen(H.h)} (H)`:'closed';})()],['Rope used ≈',`${fmtRope(rope)}`]].map(([a,b])=>`<span>${a} <b>${b}</b></span>`).join('');
+  $('stats').innerHTML=[[isRos()?'Rosette':'Mat',sizeTxt()],isRos()?['Bights × leads',`${S.B} × ${S.Ld}`]:['Bights',`${S.top} × ${S.side}`],['Pegs',M.pegs.length],['Crossings',M.cross.length],['Holes ≈',isRos()?(()=>{const a=M.cross.map(c=>Math.min(c.ang,Math.PI-c.ang)).sort((x,y)=>x-y);const an=a[Math.floor(a.length/2)]||1.57;const s2=Math.max(0.2,Math.sin(an));const v=(M.medGap*s2-M.bw)/s2;return v>0?`${fmtLen(v)} sides`:'closed';})():(()=>{const H=holeGeom();return H&&H.gap>0?`${fmtLen(H.w)} (W) × ${fmtLen(H.h)} (H)`:'closed';})()],['Rope used ≈',`${fmtRope(rope)}`]].map(([a,b])=>`<span>${a} <b>${b}</b></span>`).join('');
   const c=M.clearance, fit=$('fit');
   if(c<0){fit.className='fit bad';fit.textContent=`Tight: neighbouring lanes overlap by about ${fmtLen(-c)}. Use fewer passes, thinner rope, fewer bights or a larger mat.`;}
   else{const more=Math.floor(c/S.d);fit.className='fit ok';fit.textContent=`About ${fmtLen(c)} of open space between lanes`+(more>=1?` — room for roughly ${more} more pass${more>1?'es':''}.`:', a snug fill.')+``;}
@@ -513,6 +585,12 @@ function holeGeom(){
   return {...one(M.medGap),lo:one(M.gLo),hi:one(M.gHi),deg:2*M.medAlpha*180/Math.PI,ca,sa,s2};
 }
 function holesCalc(){
+  if(M&&M.rosette){ const L=fmtLen; const ang=(()=>{const a=M.cross.map(c=>Math.min(c.ang,Math.PI-c.ang)).sort((x,y)=>x-y);return a[Math.floor(a.length/2)]||Math.PI/2;})();
+    const s2=Math.max(0.2,Math.sin(ang)); const side=g=>(g*s2-M.bw)/s2; const a=side(M.medGap), lo=side(M.gLo), hi=side(M.gHi), deg=ang*180/Math.PI;
+    if(a<=0){$('hlTotal').textContent='closed';$('hlTable').innerHTML=`<tr><td>Ropes overlap by</td><td>${L(-(M.medGap*s2-M.bw))}</td></tr>`;$('hlNote').textContent='No open holes at this setting. Use fewer passes, thinner rope, fewer leads or a bigger rosette.';return;}
+    $('hlTotal').textContent=`≈ ${L(a)} sides`;
+    $('hlTable').innerHTML=`<tr><td>Typical side length (rope edge to rope edge)</td><td>${L(a)}</td></tr><tr><td>Range from center to edge</td><td>${L(Math.max(0,lo))} – ${L(hi)}</td></tr><tr><td>Clear gap between parallel ropes</td><td>${L(M.medGap*s2-M.bw)}</td></tr><tr><td>Typical corner angles</td><td>${deg.toFixed(1)}° and ${(180-deg).toFixed(1)}°</td></tr>`;
+    $('hlNote').textContent='In a rosette the holes grow from the center outward, so sizes are typical values with a range. Holes next to the bights are smaller and irregular.'; return; }
   const H=holeGeom(); if(!H) return;
   const L=fmtLen, u=S.units==='in'?'in²':'cm²';
   if(H.gap<=0){ $('hlTotal').textContent='closed'; $('hlTable').innerHTML=`<tr><td>Ropes overlap by</td><td>${L(-H.gap)}</td></tr>`;
@@ -606,7 +684,7 @@ function midSteps(){
   raw.forEach((st,si)=>st.idx.forEach(i=>{time.set(key(st.p,st.k,i),tc++);stepOf.set(key(st.p,st.k,i),si);}));
   const vmap=new Map(); LEGS.forEach((l,k)=>l.items.forEach((it,i)=>vmap.set(it.v,[k,i])));
   const nm=v=>v==='MID'?'Middle':lab(v);
-  const dist=midDist(HM), startTxt=`Start with the middle of the rope ${HM.atEnd?'at the start peg, between pass '+(pm+1)+' and pass '+(pm+2):`on pass ${pm+1}, ${fmtLen(dist)} past ${lab(LEGS[km].from)} along ${lab(LEGS[km].from)} → ${lab(LEGS[km].to)} (the red ½ flag)`}.`;
+  const dist=midDist(HM), startTxt=`Start with the middle of the rope ${HM.atEnd?'at the start peg, between pass '+(pm+1)+' and pass '+(pm+2):(dist<0.05*(S.units==='in'?1:2.54)?`on pass ${pm+1}, right at peg ${lab(LEGS[km].from)} (the red ½ flag)`:`on pass ${pm+1}, ${fmtLen(dist)} past ${lab(LEGS[km].from)} along ${lab(LEGS[km].from)} → ${lab(LEGS[km].to)} (the red ½ flag)`)}.`;
   return raw.map((st,si)=>{
     const l=LEGS[st.k], rows=[], marks=[];
     st.idx.forEach(i=>{ const it=l.items[i], o=vmap.get(it.o); const tnow=time.get(key(st.p,st.k,i)); const down=[];
@@ -667,7 +745,7 @@ function markSteps(){ document.querySelectorAll('.step').forEach(li=>li.classLis
 /* drawing */
 function ropeColors(){ if(S.rope==='custom'){return [S.custom,shade(S.custom,-0.55)];} return ROPES[S.rope]||ROPES.manila; }
 function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;const t=f<0?0:255,p=Math.abs(f);r=Math.round((t-r)*p+r);g=Math.round((t-g)*p+g);b=Math.round((t-b)*p+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
-function boardDims(){ const mg=Math.max(S.W,S.H)*0.075+S.peg*1.2; return {mg,Wb:S.W+2*mg,Hb:S.H+2*mg}; }
+function boardDims(){ const mg=Math.max(MW(),MH())*0.075+S.peg*1.2; return {mg,Wb:MW()+2*mg,Hb:MH()+2*mg}; }
 function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 function ptAt(arr,s,N){const i=Math.floor(s),f=s-i;const i0=((i%N)+N)%N,i1=(i0+1)%N;return arr[i0]+(arr[i1]-arr[i0])*f;}
 function tracePath(ctx,sx,sy,a,b,N,T,closed){
@@ -689,12 +767,12 @@ function render(ctx,wpx,hpx,opt){
     ctx.lineWidth=Math.max(1,sc*0.02);
     for(const [step,col] of [[minor,`rgba(${BI.grid},.10)`],[major,`rgba(${BI.grid},.22)`]]){
       if(step*sc<5) continue; ctx.strokeStyle=col; ctx.beginPath();
-      for(let x=-S.W/2;x<=Wb/2;x+=step){ctx.moveTo(T.x(x),0);ctx.lineTo(T.x(x),hpx);} for(let x=-S.W/2-step;x>=-Wb/2;x-=step){ctx.moveTo(T.x(x),0);ctx.lineTo(T.x(x),hpx);}
-      for(let y=S.H/2;y>=-Hb/2;y-=step){ctx.moveTo(0,T.y(y));ctx.lineTo(wpx,T.y(y));} for(let y=S.H/2+step;y<=Hb/2;y+=step){ctx.moveTo(0,T.y(y));ctx.lineTo(wpx,T.y(y));}
+      for(let x=-MW()/2;x<=Wb/2;x+=step){ctx.moveTo(T.x(x),0);ctx.lineTo(T.x(x),hpx);} for(let x=-MW()/2-step;x>=-Wb/2;x-=step){ctx.moveTo(T.x(x),0);ctx.lineTo(T.x(x),hpx);}
+      for(let y=MH()/2;y>=-Hb/2;y-=step){ctx.moveTo(0,T.y(y));ctx.lineTo(wpx,T.y(y));} for(let y=MH()/2+step;y<=Hb/2;y+=step){ctx.moveTo(0,T.y(y));ctx.lineTo(wpx,T.y(y));}
       ctx.stroke();
     }
     ctx.setLineDash([sc*0.4,sc*0.3]); ctx.strokeStyle=BI.line; ctx.lineWidth=Math.max(1,sc*0.03);
-    ctx.strokeRect(T.x(-S.W/2),T.y(S.H/2),S.W*sc,S.H*sc); ctx.setLineDash([]);
+    if(isRos()){for(const rr of [S.D/2,S.Dh/2]){ctx.beginPath();ctx.arc(T.x(0),T.y(0),rr*sc,0,7);ctx.stroke();}} else ctx.strokeRect(T.x(-MW()/2),T.y(MH()/2),MW()*sc,MH()*sc); ctx.setLineDash([]);
   }
   if(!M||M.error) return;
   const N=M.N, d=S.d;
@@ -720,7 +798,7 @@ function render(ctx,wpx,hpx,opt){
       for(const off of [-N,0,N]){const c=vs+off; if(c>a&&c<b){ const ra=Math.max(a,c-del), rb=Math.min(b,c+del); drawRange(ra,rb,false);} }
     }
   }
-  if(S.showHole&&M.centerCross){const H=holeGeom(); if(H&&H.gap>0){
+  if(S.showHole&&M.centerCross&&!M.rosette){const H=holeGeom(); if(H&&H.gap>0){
     const g=M.medGap, c=M.centerCross, cx=c.x+g*H.ca, cy=c.y, hw=H.w/2, hh=H.h/2;
     ctx.save(); ctx.strokeStyle=accent; ctx.lineWidth=Math.max(2,sc*0.06*(S.units==='in'?1:2.54)); ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(T.x(cx-hw),T.y(cy)); ctx.lineTo(T.x(cx),T.y(cy+hh)); ctx.lineTo(T.x(cx+hw),T.y(cy)); ctx.lineTo(T.x(cx),T.y(cy-hh)); ctx.closePath();
@@ -755,7 +833,7 @@ function render(ctx,wpx,hpx,opt){
       if(p.name===S.start){ctx.strokeStyle=accent;ctx.lineWidth=Math.max(2,r*0.35);ctx.beginPath();ctx.arc(x,y,r*1.55,0,7);ctx.stroke();}
       if(S.labels){
         const gap=M.bw/2+mg*0.38; let lx=p.x,ly=p.y;
-        if(p.side==='T')ly=M.ay+gap; if(p.side==='B')ly=-M.ay-gap; if(p.side==='L')lx=-M.ax-gap; if(p.side==='R')lx=M.ax+gap;
+        if(p.side==='T')ly=M.ay+gap; if(p.side==='B')ly=-M.ay-gap; if(p.side==='L')lx=-M.ax-gap; if(p.side==='R')lx=M.ax+gap; if(p.side==='O'||p.side==='I'){[lx,ly]=pegLabelPos(p);}
         const t=lab(p.name); ctx.font=`600 ${t.length>4?fs*0.8:fs}px "IBM Plex Mono", ui-monospace, monospace`; ctx.fillStyle=p.name===S.start?(isDark(bgColor())?'#9fd0ff':accent):boardInk().label; ctx.fillText(t,T.x(lx),T.y(ly));
       }
     }
@@ -796,10 +874,13 @@ function svgPath(sx,sy,a,b,N,closed){
   return out+'L'+f3(ptAt(sx,b,N))+' '+f3(-ptAt(sy,b,N));
 }
 function svgHead(){const {Wb,Hb}=boardDims();return `<svg xmlns="http://www.w3.org/2000/svg" width="${f3(Wb)}${S.units}" height="${f3(Hb)}${S.units}" viewBox="${f3(-Wb/2)} ${f3(-Hb/2)} ${f3(Wb)} ${f3(Hb)}">\n`;}
-function pegLabelPos(p){const {mg}=boardDims();const gap=M.bw/2+mg*0.38;let lx=p.x,ly=p.y;if(p.side==='T')ly=M.ay+gap;if(p.side==='B')ly=-M.ay-gap;if(p.side==='L')lx=-M.ax-gap;if(p.side==='R')lx=M.ax+gap;return [lx,ly];}
+function pegLabelPos(p){const {mg}=boardDims();const gap=M.bw/2+mg*0.38;let lx=p.x,ly=p.y;
+  if(p.side==='O'){const r=S.D/2+mg*0.38;return [r*Math.cos(p.th),r*Math.sin(p.th)];}
+  if(p.side==='I'){const rp=Math.hypot(p.x,p.y); const r=S.rStyle==='simple'?Math.max(rp*0.45,rp-Math.max(S.peg,S.d*2)*1.1):Math.max(S.Dh/2*0.55,S.Dh/2-Math.max(S.peg,S.d*2)*0.9);return [r*Math.cos(p.th),r*Math.sin(p.th)];}
+  if(p.side==='T')ly=M.ay+gap;if(p.side==='B')ly=-M.ay-gap;if(p.side==='L')lx=-M.ax-gap;if(p.side==='R')lx=M.ax+gap;return [lx,ly];}
 function wovenSVG(){
   const {Wb,Hb}=boardDims(),N=M.N,d=S.d,[fill,edge]=ropeColors(); let s=svgHead();
-  s+=`<title>Rope mat ${S.top}x${S.side} bights, ${S.W}x${S.H} ${S.units}, ${S.passes} passes</title>\n`;
+  s+=`<title>${designName()}, ${MW()}x${MH()} ${S.units}, ${S.passes} passes</title>\n`;
   if(S.jig) s+=`<rect x="${f3(-Wb/2)}" y="${f3(-Hb/2)}" width="${f3(Wb)}" height="${f3(Hb)}" fill="${bgColor()}"/>\n`;
   s+=`<g fill="none" stroke-linejoin="round" stroke-linecap="butt">\n<defs>`;
   M.strands.forEach((st,i)=>s+=`<path id="s${i}" d="${svgPath(st.x,st.y,0,0,N,true)}"/>`); s+='</defs>\n';
@@ -815,9 +896,10 @@ function wovenSVG(){
 }
 function jigSVG(){
   const {Wb,Hb}=boardDims(),N=M.N; const lw=S.units==='in'?0.02:0.05; let s=svgHead();
-  s+=`<title>Jig template ${S.top}x${S.side}, ${S.W}x${S.H} ${S.units} — print at 100%</title>\n`;
+  s+=`<title>Jig template ${designTag()}, ${MW()}x${MH()} ${S.units} — print at 100%</title>\n`;
   s+=`<rect x="${f3(-Wb/2)}" y="${f3(-Hb/2)}" width="${f3(Wb)}" height="${f3(Hb)}" fill="#fff" stroke="#000" stroke-width="${lw}"/>\n`;
-  s+=`<rect x="${f3(-S.W/2)}" y="${f3(-S.H/2)}" width="${f3(S.W)}" height="${f3(S.H)}" fill="none" stroke="#777" stroke-width="${lw}" stroke-dasharray="${f3(lw*10)} ${f3(lw*6)}"/>\n`;
+  if(isRos()) for(const rr of [S.D/2,S.Dh/2]) s+=`<circle cx="0" cy="0" r="${f3(rr)}" fill="none" stroke="#777" stroke-width="${lw}" stroke-dasharray="${f3(lw*10)} ${f3(lw*6)}"/>\n`;
+  else s+=`<rect x="${f3(-MW()/2)}" y="${f3(-MH()/2)}" width="${f3(MW())}" height="${f3(MH())}" fill="none" stroke="#777" stroke-width="${lw}" stroke-dasharray="${f3(lw*10)} ${f3(lw*6)}"/>\n`;
   s+=`<path d="${svgPath(M.X,M.Y,0,0,N,true)}" fill="none" stroke="#999" stroke-width="${lw}"/>\n`;
   const fs=Math.max(S.peg,S.d*2)*0.55, r=S.peg/2;
   s+=`<g font-family="monospace" font-size="${f3(fs)}" text-anchor="middle" dominant-baseline="middle">\n`;
@@ -833,8 +915,8 @@ function xName(l,i){const o=LEGS[l.items[i].other];return o?lab(o.from)+'-'+lab(
 function guideHTML(){
   const lead=S.guideMode!=='follow', today=new Date().toISOString().slice(0,10);
   const route=[LEGS[0].from].concat(LEGS.slice(0,2).map(l=>l.to)).map(lab).join('→')+'→…→'+lab(LEGS[0].from);
-  const title=`${S.top}×${S.side} Rope Mat – Over/Under Threading Guide (${S.midOut?'middle out, all passes':lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`;
-  let b=`<h1>${esc(title)}</h1><div class="sub">${today} · ${esc(fmtLen(S.W))} (W) × ${esc(fmtLen(S.H))} (H) · ${S.passes} pass${S.passes>1?'es':''} of ${esc(fmtLen(S.d))} rope · start at ${esc(lab(LEGS[0].from))}</div>`;
+  const title=`${designName('×')} – Over/Under Threading Guide (${S.midOut?'middle out, all passes':lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`;
+  let b=`<h1>${esc(title)}</h1><div class="sub">${today} · ${esc(sizeTxt())} · ${S.passes} pass${S.passes>1?'es':''} of ${esc(fmtLen(S.d))} rope · start at ${esc(lab(LEGS[0].from))}</div>`;
   b+= lead? `<p>How to use this: work through the steps in order, 1 to ${LEGS.length} (${esc(route)}). Each step below only lists crossings with rope that is <b>already down</b> by the time you get there. If a step has no entries listed, just pull it straight — there's nothing there yet to weave through. (Crossings with rope that doesn't exist yet will show up later, listed under whichever future step lays that rope.)${S.passes>1?' This covers the first pass. For the following passes, print the "passes 2 and up" guide.':''}</p>`
           : `<p>How to use this: these passes run beside the lead, so every crossing already has rope there. Work through the steps in order, 1 to ${LEGS.length} (${esc(route)}), and follow every over/under listed, keeping to the same side of the lead the whole way round.</p>`;
   if(S.midOut) b=b.replace(/<p>How to use this:[\s\S]*<\/p>$/,'')+`<p>How to use this: start with the middle of the rope at the red ½ mark. Lay <b>Part A</b> with one end, back to ${esc(lab(LEGS[0].from))}, then lay <b>Part B</b> with the other end. Each step lists only crossings with rope that is <b>already down</b>, including other passes. If a step has nothing listed, just pull it straight.</p>`;
@@ -852,7 +934,7 @@ tr:nth-child(odd) td{background:#f2f2f2}td.o{color:#1f5fbf;font-weight:700}td.u{
 }
 function jigPDF(){
   const {jsPDF}=window.jspdf, IN=S.units==='in'?1:1/2.54, PT=72; // world units -> inches -> points
-  const PAD=1.75; const BW=S.W*IN+2*PAD, BH=S.H*IN+2*PAD; // template = mat + 1.75 in all round (room for labels)
+  const PAD=1.75; const BW=MW()*IN+2*PAD, BH=MH()*IN+2*PAD; // template = mat + 1.75 in all round (room for labels)
   const M0=0.4; // page margin (in)
   const fit=(pw,ph)=>{const uw=pw-2*M0, uh=ph-2*M0-0.35-0.8; return {pw,ph,uw,uh,cols:Math.ceil(BW/uw),rows:Math.ceil(BH/uh)};};
   const P=fit(8.5,11), L=fit(11,8.5); const G=(L.cols*L.rows<P.cols*P.rows)?L:P; const orient=G===L?'landscape':'portrait';
@@ -860,7 +942,7 @@ function jigPDF(){
   const colName=c=>String.fromCharCode(65+c), tileName=(r,c)=>colName(c)+(r+1);
   const lw=0.6, mm=v=>v*PT;
   // world (centred, y up) -> board inches (from top-left)
-  const bx=X=>(X+S.W/2)*IN+PAD, by=Y=>(S.H/2-Y)*IN+PAD;
+  const bx=X=>(X+MW()/2)*IN+PAD, by=Y=>(MH()/2-Y)*IN+PAD;
   // decimated centreline
   const step=Math.max(1,Math.floor(M.N/1400)), pts=[]; for(let i=0;i<M.N;i+=step) pts.push([bx(M.X[i]),by(M.Y[i])]); pts.push(pts[0]);
   const scaleBar=(x,y)=>{ // 0-5 in ruler + 10 cm ruler, x,y in pt (top-left)
@@ -874,7 +956,7 @@ function jigPDF(){
   const drawBoard=(ox,oy,clip)=>{ // ox,oy: pt offset of board origin on page
     const X=v=>ox+v*PT, Y=v=>oy+v*PT;
     doc.setDrawColor(0);doc.setLineWidth(lw);doc.rect(X(0),Y(0),BW*PT,BH*PT);
-    doc.setDrawColor(130);doc.setLineDashPattern([6,4],0);doc.rect(X(bx(-S.W/2)),Y(by(S.H/2)),S.W*IN*PT,S.H*IN*PT);doc.setLineDashPattern([],0);
+    doc.setDrawColor(130);doc.setLineDashPattern([6,4],0); if(isRos()){for(const rr of [S.D/2,S.Dh/2]) doc.circle(X(bx(0)),Y(by(0)),rr*IN*PT,'S');} else doc.rect(X(bx(-MW()/2)),Y(by(MH()/2)),MW()*IN*PT,MH()*IN*PT);doc.setLineDashPattern([],0);
     // 1-inch / 1-cm grid, very light
     doc.setDrawColor(225);doc.setLineWidth(0.3); const gs=S.units==='in'?1:1/2.54, vx0=(clip.x-ox)/PT, vx1=vx0+clip.w/PT, vy0=(clip.y-oy)/PT, vy1=vy0+clip.h/PT;
     for(let x=PAD%gs;x<=BW+1e-6;x+=gs) if(x>=vx0-0.01&&x<=vx1+0.01) doc.line(X(x),Y(Math.max(0,vy0)),X(x),Y(Math.min(BH,vy1)));
@@ -890,9 +972,9 @@ function jigPDF(){
   };
   // ---- cover page
   const PW=G.pw*PT, PH=G.ph*PT;
-  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(17);doc.text(`${S.top}x${S.side} Rope Mat - Jig Template`,PW/2,54,{align:'center'});
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(17);doc.text(`${designName()} - Jig Template`,PW/2,54,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(90);
-  doc.text(`Mat ${fmtLen(S.W)} (W) x ${fmtLen(S.H)} (H) · ${M.pegs.length} pegs of ${fmtLen(S.peg)} · template ${(BW).toFixed(1)} x ${(BH).toFixed(1)} in · ${G.rows*G.cols} pages (${G.cols} across x ${G.rows} down)`,PW/2,72,{align:'center'});
+  doc.text(`${isRos()?'Rosette':'Mat'} ${sizeTxt('x')} · ${M.pegs.length} pegs of ${fmtLen(S.peg)} · template ${(BW).toFixed(1)} x ${(BH).toFixed(1)} in · ${G.rows*G.cols} pages (${G.cols} across x ${G.rows} down)`,PW/2,72,{align:'center'});
   // overview
   const ovW=PW-2*M0*PT, ovH=PH*0.46, sc=Math.min(ovW/(G.cols*G.uw*PT),ovH/(G.rows*G.uh*PT)); const ox0=(PW-G.cols*G.uw*PT*sc)/2, oy0=92;
   doc.setDrawColor(0);doc.setLineWidth(0.6);
@@ -917,7 +999,7 @@ function jigPDF(){
     const x0=M0*PT, y0=M0*PT+0.35*PT, uw=G.uw*PT, uh=G.uh*PT;
     // header
     doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(17);doc.text(`Page ${tileName(r,c)}`,x0,M0*PT+8);
-    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(90);doc.text(`${S.top}x${S.side} jig · row ${r+1} of ${G.rows}, column ${colName(c)} of ${colName(G.cols-1)} · print at 100%`,x0+70,M0*PT+8);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(90);doc.text(`${designTag()} jig · row ${r+1} of ${G.rows}, column ${colName(c)} of ${colName(G.cols-1)} · print at 100%`,x0+70,M0*PT+8);
     // clipped board
     doc.saveGraphicsState(); doc.rect(x0,y0,uw,uh,null); doc.clip(); doc.discardPath();
     drawBoard(x0-c*uw,y0-r*uh,{x:x0,y:y0,w:uw,h:uh}); doc.restoreGraphicsState();
@@ -939,12 +1021,12 @@ function guidePDF(){
   const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight(), ML=63, MR=63, MT=64, MB=60, TW=PW-ML-MR;
   const lead=S.guideMode!=='follow', today=new Date().toISOString().slice(0,10);
   const plain=s=>String(s).replace(/×/g,'x');
-  const title=`${S.top}x${S.side} Rope Mat – Over/Under Threading Guide (${S.midOut?'middle out, all passes':lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`.replace('–','-');
+  const title=`${designName()} – Over/Under Threading Guide (${S.midOut?'middle out, all passes':lead?(S.passes>1?'pass 1, the lead':'single pass'):'passes 2 and up'})`.replace('–','-');
   let y=MT;
   doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(17);
   doc.splitTextToSize(title,TW-40).forEach(line=>{doc.text(line,PW/2,y,{align:'center'});y+=26;});
   doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(110);
-  doc.text(plain(`${today} · ${fmtLen(S.W)} (W) x ${fmtLen(S.H)} (H) · ${S.passes} pass${S.passes>1?'es':''} of ${fmtLen(S.d)} rope · start at ${lab(LEGS[0].from)}`),ML,y); y+=22;
+  doc.text(plain(`${today} · ${sizeTxt('x')} · ${S.passes} pass${S.passes>1?'es':''} of ${fmtLen(S.d)} rope · start at ${lab(LEGS[0].from)}`),ML,y); y+=22;
   // how-to paragraph with a bold "already down"
   const route=[LEGS[0].from,LEGS[0].to,LEGS[1].to].map(lab).join(' > ')+' > ... > '+lab(LEGS[0].from);
   const para = S.midOut
@@ -967,11 +1049,11 @@ function guidePDF(){
     doc.text(b,xx,yy); };
   const rowH=20.5;
   buildGuide().forEach(g=>{
-    const rows=g.rows; const startNote=g.badge?g.badge.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/→/g,'>'):'';
+    const rows=g.rows; const startNote=g.badge?g.badge.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/→/g,'to'):'';
     const need=28+(g.section?44:0)+(startNote?30:0)+(rows.length?(rows.length+1)*rowH+10:22);
     if(y+need>PH-MB){doc.addPage();y=MT;}
     if(g.section){ doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(17);doc.text(g.section.t,ML,y+4);doc.setDrawColor(40);doc.setLineWidth(1.2);doc.line(ML,y+9,ML+TW,y+9);
-      doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(90);doc.text(g.section.s,ML,y+24);y+=44; }
+      doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(90);doc.text(g.section.s.replace(/→/g,'to'),ML,y+24);y+=44; }
     arrowText(`Step ${g.num}: ${g.fromName||lab(g.from)}`,(g.toName||lab(g.to))+(S.midOut&&S.passes>1?`  ·  pass ${g.pass+1}`:''),y); y+=14;
     if(startNote){ doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(176,48,42); doc.splitTextToSize(startNote,TW).forEach(t=>{doc.text(t,ML+3,y+6);y+=13;}); y+=6; }
     if(!rows.length){ doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(115);
@@ -993,13 +1075,13 @@ function guideCSV(){
   const toIn=v=>S.units==='in'?v:v/2.54, toCm=v=>S.units==='in'?v*2.54:v;
   const dual=v=>`${toIn(v).toFixed(2)} in / ${toCm(v).toFixed(1)} cm`;
   const rope=ropeCalc();
-  const rows=[['Rope mat',`${S.top}x${S.side} bights`,`${S.passes} passes`],
-    ['Mat size',`${toIn(S.W).toFixed(2)} in (W) x ${toIn(S.H).toFixed(2)} in (H)`,`${toCm(S.W).toFixed(1)} cm (W) x ${toCm(S.H).toFixed(1)} cm (H)`],
+  const rows=[[isRos()?'Turk\'s head rosette':'Rope mat',isRos()?`${S.B} bights x ${S.Ld} leads`:`${S.top}x${S.side} bights`,`${S.passes} passes`],
+    isRos()?['Size',`${toIn(S.D).toFixed(2)} in / ${toCm(S.D).toFixed(1)} cm across`,`center hole ${toIn(S.Dh).toFixed(2)} in / ${toCm(S.Dh).toFixed(1)} cm`]:['Mat size',`${toIn(MW()).toFixed(2)} in (W) x ${toIn(MH()).toFixed(2)} in (H)`,`${toCm(MW()).toFixed(1)} cm (W) x ${toCm(MH()).toFixed(1)} cm (H)`],
     ['Rope diameter',dual(S.d)],['Peg diameter',dual(S.peg)],
     ['Rope used',`${(toIn(rope)/12).toFixed(1)} ft`,`${(toCm(rope)/100).toFixed(2)} m`,'take-up %',S.takeup,'tails each',dual(S.tail)],[],
     ['Peg','X from mat left (in)','Y from mat top (in)','X from mat left (cm)','Y from mat top (cm)','X from mat left (mm)','Y from mat top (mm)']];
-  const order=s=>'TRBL'.indexOf(s[0])*100+parseInt(s.slice(1));
-  M.pegs.slice().sort((a,b)=>order(a.name)-order(b.name)).forEach(p=>{const x=p.x+S.W/2,y=S.H/2-p.y;
+  const order=pegOrder;
+  M.pegs.slice().sort((a,b)=>order(a.name)-order(b.name)).forEach(p=>{const x=p.x+MW()/2,y=MH()/2-p.y;
     rows.push([csvq(lab(p.name)),toIn(x).toFixed(3),toIn(y).toFixed(3),toCm(x).toFixed(2),toCm(y).toFixed(2),(toCm(x)*10).toFixed(1),(toCm(y)*10).toFixed(1)]);});
   rows.push([],['Leg','From','To','Pass 1 lead (. = nothing there yet)','Passes 2+ (every crossing)']);
   LEGS.forEach((l,k)=>rows.push([k+1,csvq(lab(l.from)),csvq(lab(l.to)),l.lead.map((x,i)=>x==='·'?'.':x+'('+xName(l,i)+')').join(' '),l.ou.map((x,i)=>x+'('+xName(l,i)+')').join(' ')]));
@@ -1007,7 +1089,7 @@ function guideCSV(){
 }
 async function doExport(kind){
   if(!M||M.error){toast('Fix the bight counts first.');return;}
-  const base=`rope-mat-${S.top}x${S.side}-${S.W}x${S.H}${S.units}`;
+  const base=isRos()?`rosette-${S.B}B${S.Ld}L-${S.D}${S.units}`:`rope-mat-${S.top}x${S.side}-${S.W}x${S.H}${S.units}`;
   let filename,data;
   if(kind==='svg'){filename=base+'.svg';data=wovenSVG();}
   else if(kind==='jig'){filename=base+'-jig.svg';data=jigSVG();}
@@ -1024,8 +1106,6 @@ async function doExport(kind){
   else toast('Saving is not available in this view.');
 }
 document.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>doExport(b.dataset.exp));
-const TIP_URL='https://ko-fi.com/jm2080'; // tip jar link
-if(TIP_URL){$('tip').href=TIP_URL;$('tip').hidden=false;}
 if(window.claude&&window.claude.use){ window.claude.use('downloads').then(x=>{dl=x; if(!x) $('expnote').textContent='Saving files is not available in this view, so SVG and CSV exports copy to the clipboard instead.';}).catch(()=>{}); }
 
 rebuild();
