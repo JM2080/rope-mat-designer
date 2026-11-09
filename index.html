@@ -100,6 +100,13 @@ canvas{display:block;width:100%;height:auto}
 body.ros.simple .k-field{display:none}
 .segb[aria-pressed=true]{background:var(--accent);color:var(--panel)}
 body.ros .rect-only{display:none!important} body:not(.ros) .ros-only{display:none!important}
+.savep{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
+.savep input{width:100%;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.mychip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--bg);overflow:hidden}
+.mychip .chip{border:0;border-radius:0}
+.mychip .x{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 9px 0 4px;font-size:15px;line-height:1}
+.mychip .x:hover{color:var(--under)}
+.nomy{color:var(--muted);font-size:12.5px}
 .exports{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--line);align-items:center}
 .exports .exp-row{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px}
 .exports .note{color:var(--muted);font-size:12.5px;flex-basis:100%}
@@ -165,6 +172,9 @@ details[open] summary{margin-bottom:6px}
     <div class="sec">
       <div class="lbl">Presets</div>
       <div class="presets" id="presets"></div>
+      <div class="lbl" style="margin-top:4px">My presets</div>
+      <div class="presets" id="myPresets"></div>
+      <div class="savep"><input id="pName" type="text" maxlength="40" placeholder="Name this design" aria-label="Preset name"><button class="btn" type="button" id="pSave">Save</button></div>
     </div>
     <div class="sec">
       <div class="lbl">Bights</div>
@@ -507,6 +517,23 @@ function buildPresets(){ const box=$('presets'); box.innerHTML='';
   (isRos()?ROS_PRESETS:PRESETS).forEach(p=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p.name;
     b.onclick=()=>{Object.assign(S,p);S.peg=p.units==='in'?(p.d<=0.2?0.25:1):2.5;S.start=isRos()?'O1':'R1';S.dir=1;rebuild();};box.appendChild(b);}); }
 buildPresets();
+const PKEYS=['shape','rStyle','B','Ld','D','Dh','top','side','W','H','d','passes','peg','k','units','start','dir','midOut','invert','rope','custom','bg','bgCustom','pegColor','pegCustom','passLayer','passA','passB','takeup','tail','spare'];
+let MY=[]; try{MY=JSON.parse(localStorage.getItem('ropeMatPresets')||'[]')||[];}catch(e){MY=[];}
+function saveMy(){try{localStorage.setItem('ropeMatPresets',JSON.stringify(MY));}catch(e){toast('Could not save presets in this browser.');}}
+function buildMy(){ const box=$('myPresets'); box.innerHTML='';
+  if(!MY.length){box.innerHTML='<span class="nomy">None yet. Set up a design, name it below and press Save.</span>';return;}
+  MY.forEach((p,i)=>{const w=document.createElement('span');w.className='mychip';
+    const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p.name;b.title=p.shape==='rosette'?'Rosette':'Rectangular mat';
+    b.onclick=()=>{Object.assign(S,p.s);stop();prog=1;selLeg=-1;['custom','bgCustom','pegCustom','passA','passB'].forEach(k=>{const e=$(k);if(e)e.value=S[k];});buildPresets();rebuild();passKey();toast('Loaded '+p.name);};
+    const x=document.createElement('button');x.type='button';x.className='x';x.textContent='×';x.setAttribute('aria-label','Delete '+p.name);
+    let armed=false; x.onclick=()=>{ if(!armed){armed=true;x.textContent='delete?';setTimeout(()=>{armed=false;x.textContent='×';},2500);return;} MY.splice(i,1);saveMy();buildMy();};
+    w.append(b,x);box.appendChild(w);}); }
+$('pSave').onclick=()=>{ const name=$('pName').value.trim()||(isRos()?`Rosette ${S.B}×${S.Ld}`:`Mat ${S.top}×${S.side} ${S.W}×${S.H}`);
+  const s={}; PKEYS.forEach(k=>s[k]=S[k]); const j=MY.findIndex(p=>p.name===name);
+  if(j>=0) MY[j]={name,shape:S.shape,s}; else MY.push({name,shape:S.shape,s});
+  saveMy(); buildMy(); $('pName').value=''; toast((j>=0?'Updated ':'Saved ')+name); };
+$('pName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('pSave').click();}});
+buildMy();
 Object.entries(ROPES).forEach(([k,c])=>{const b=document.createElement('button');b.type='button';b.className='sw';b.dataset.rope=k;b.style.background=c[0];b.title=k;b.setAttribute('aria-label',k+' rope');
   b.onclick=()=>{S.rope=k;syncInputs();save();draw();};$('swatches').appendChild(b);});
 Object.entries(PEGC).forEach(([k,c])=>{const b=document.createElement('button');b.type='button';b.className='sw pegsw';b.dataset.peg=k;b.style.background=c;b.title=k;b.setAttribute('aria-label',k+' pegs');
@@ -920,6 +947,7 @@ function guideHTML(){
   b+= lead? `<p>How to use this: work through the steps in order, 1 to ${LEGS.length} (${esc(route)}). Each step below only lists crossings with rope that is <b>already down</b> by the time you get there. If a step has no entries listed, just pull it straight — there's nothing there yet to weave through. (Crossings with rope that doesn't exist yet will show up later, listed under whichever future step lays that rope.)${S.passes>1?' This covers the first pass. For the following passes, print the "passes 2 and up" guide.':''}</p>`
           : `<p>How to use this: these passes run beside the lead, so every crossing already has rope there. Work through the steps in order, 1 to ${LEGS.length} (${esc(route)}), and follow every over/under listed, keeping to the same side of the lead the whole way round.</p>`;
   if(S.midOut) b=b.replace(/<p>How to use this:[\s\S]*<\/p>$/,'')+`<p>How to use this: start with the middle of the rope at the red ½ mark. Lay <b>Part A</b> with one end, back to ${esc(lab(LEGS[0].from))}, then lay <b>Part B</b> with the other end. Each step lists only crossings with rope that is <b>already down</b>, including other passes. If a step has nothing listed, just pull it straight.</p>`;
+  { const im=boardImage(1400); b+=`<img src="${im.url}" alt="Mat design" style="display:block;max-width:100%;margin:6px auto 18px;border:1px solid #ccc">`; }
   buildGuide().forEach(g=>{ if(g.section) b+=`<h2 style="margin-top:34px;border-bottom:2px solid #333">${esc(g.section.t)}</h2><p>${esc(g.section.s)}</p>`;
     b+=`<h2>${esc(stepTitle(g))}</h2>`; if(g.badge) b+=`<p><b>${esc(g.badge.replace(/<[^>]+>/g,''))}</b></p>`;
     if(!g.rows.length){ b+=`<p class="none">${emptyText(g)}</p>`; return; }
@@ -1016,6 +1044,13 @@ function jigPDF(){
   }
   return doc.output('arraybuffer');
 }
+function boardImage(maxW){ // snapshot of the board as currently displayed (all rope laid), on white
+  const {Wb,Hb}=boardDims(); const w=maxW||1600, hh=Math.round(w*Hb/Wb);
+  const c=document.createElement('canvas'); c.width=w; c.height=hh;
+  render(c.getContext('2d'),w,hh,{prog:1,sel:-1,dpr:w/Math.max(1,cv.clientWidth)});
+  const c2=document.createElement('canvas'); c2.width=w; c2.height=hh; const x=c2.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,hh); x.drawImage(c,0,0);
+  return {url:c2.toDataURL('image/jpeg',0.88),w,h:hh};
+}
 function guidePDF(){
   const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'pt',format:'letter'});
   const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight(), ML=63, MR=63, MT=64, MB=60, TW=PW-ML-MR;
@@ -1043,6 +1078,8 @@ function guidePDF(){
     parts.forEach((pt,pi)=>{ doc.setFont('helvetica',bold?'bold':'normal'); const tw=doc.getTextWidth(pt);
       if(x+tw>ML+TW){x=ML;y+=lh;} doc.text(pt,x,y); x+=tw+(pi<parts.length-1?doc.getTextWidth(' '):0); }); }
   y+=lh+12;
+  { const im=boardImage(1700); let iw=TW, ih=iw*im.h/im.w; const maxH=(PH-MT-MB)*0.62; if(ih>maxH){ih=maxH;iw=ih*im.w/im.h;}
+    if(y+ih>PH-MB){doc.addPage();y=MT;} doc.addImage(im.url,'JPEG',ML+(TW-iw)/2,y,iw,ih); y+=ih+22; }
   const arrowText=(a,b,yy)=>{ doc.setFont('helvetica','bold'); doc.setFontSize(13.5); doc.setTextColor(25);
     let xx=ML; doc.text(a,xx,yy); xx+=doc.getTextWidth(a)+5;
     doc.setDrawColor(25); doc.setLineWidth(0.9); doc.line(xx,yy-4.5,xx+11,yy-4.5); doc.line(xx+11,yy-4.5,xx+7.5,yy-7); doc.line(xx+11,yy-4.5,xx+7.5,yy-2); xx+=16;
